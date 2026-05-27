@@ -141,7 +141,34 @@ async function sbFetch(path, method, body) {
   var t = await r.text();
   return t ? JSON.parse(t) : null;
 }
-async function dbGetProjects(d) { try { var r = await sbFetch('projects?date=eq.'+d+'&select=data'); return (r&&r.length) ? r[0].data : []; } catch(e) { return []; } }
+async function dbGetAllProjects() {
+  try {
+    var r = await sbFetch('projects?select=date,data&order=date.desc');
+    var all = [];
+    (r||[]).forEach(function(row){ (row.data||[]).forEach(function(p){ all.push(p); }); });
+    // Sort by fecha desc
+    all.sort(function(a,b){
+      var da = a.fecha ? a.fecha.split('/').reverse().join('') : '';
+      var db = b.fecha ? b.fecha.split('/').reverse().join('') : '';
+      return db.localeCompare(da);
+    });
+    return all;
+  } catch(e) { return []; }
+}
+
+async function dbGetAllSelections() {
+  try {
+    var r = await sbFetch('selections?select=manager,data');
+    var out = {};
+    (r||[]).forEach(function(x){
+      if (!out[x.manager]) out[x.manager] = {};
+      Object.assign(out[x.manager], x.data);
+    });
+    return out;
+  } catch(e) { return {}; }
+}
+
+
 async function dbSaveProjects(d, ps) { try { await sbFetch('projects?date=eq.'+d,'DELETE'); } catch(e) {} if (ps.length) try { await sbFetch('projects','POST',{id:Date.now(),date:d,data:ps}); } catch(e) {} }
 async function dbGetSelections(d) { try { var r = await sbFetch('selections?date=eq.'+d+'&select=manager,data'); var o = {}; (r||[]).forEach(function(x){o[x.manager]=x.data;}); return o; } catch(e) { return {}; } }
 async function dbSaveSelection(d, m, data) { try { await sbFetch('selections?date=eq.'+d+'&manager=eq.'+encodeURIComponent(m),'DELETE'); } catch(e) {} try { await sbFetch('selections','POST',{date:d,manager:m,data:data,updated_at:new Date().toISOString()}); } catch(e) {} }
@@ -206,8 +233,8 @@ function renderLogin() {
 async function login(name) {
   currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {};
   showOverlay('Cargando proyectos...');
-  PROJECTS = await dbGetProjects(viewDate);
-  SELS = await dbGetSelections(viewDate);
+  PROJECTS = await dbGetAllProjects();
+  SELS = await dbGetAllSelections();
   if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){ localSel[pid]=true; localImp[pid]=SELS[currentUser][pid].impacts||{}; }); }
   hideOverlay(); buildNav(); renderApp('mgr');
 }
@@ -217,12 +244,8 @@ function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr'
 function renderManager(container) {
   var h = '<div class="m-hdr">';
   h += '<i class="ti ti-file-text" style="font-size:20px;color:var(--text2)"></i>';
-  h += '<span class="m-hdr-title">Proyectos del dia</span>';
-  h += '<div style="margin-left:auto;display:flex;align-items:center;gap:6px">';
-  h += '<label style="font-size:12px;color:var(--text2)"><i class="ti ti-calendar" style="font-size:12px"></i></label>';
-  h += '<input type="date" id="date-picker" value="'+viewDate+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);height:28px" onchange="changeDate(this.value)">';
-  h += '<span id="date-badge" class="history-badge" style="display:'+(viewDate!==isoToday()?'inline':'none')+'">Historial</span>';
-  h += '</div></div>';
+  h += '<span class="m-hdr-title">Proyectos</span>';
+  h += '</div>';
   h += '<div class="toolbar"><label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
   h += '<label>Jurisdiccion</label><div class="dd-wrap"><button class="dd-btn" id="dd-jur-btn" onclick="toggleMenu(\'jur\',event)">Todas</button>';
@@ -345,7 +368,7 @@ function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
   var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0&&aJ.indexOf(p.jur)>=0;});
   var list = document.getElementById('list'); if (!list) return;
-  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>'+(viewDate===isoToday()?'No hay proyectos cargados para hoy.':'No hay proyectos para este dia.')+'</div>'; return; }
+  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
   var h = '';
   if (allSecSelected()) {
