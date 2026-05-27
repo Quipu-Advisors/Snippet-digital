@@ -370,15 +370,61 @@ function renderList() {
   var list = document.getElementById('list'); if (!list) return;
   if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
+
+  // Group by fecha
+  var groups = {};
+  var groupOrder = [];
+  f.forEach(function(p) {
+    var fecha = p.fecha || 'Sin fecha';
+    if (!groups[fecha]) { groups[fecha] = []; groupOrder.push(fecha); }
+    groups[fecha].push(p);
+  });
+  // Sort dates desc (already sorted but enforce)
+  groupOrder.sort(function(a,b){
+    var da = a !== 'Sin fecha' ? a.split('/').reverse().join('') : '';
+    var db = b !== 'Sin fecha' ? b.split('/').reverse().join('') : '';
+    return db.localeCompare(da);
+  });
+
+  var DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+  var DIAS_ES = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  function fechaLabel(fecha) {
+    if (fecha === 'Sin fecha') return 'Sin fecha';
+    var parts = fecha.split('/');
+    if (parts.length !== 3) return fecha;
+    var d = parseInt(parts[0]), m = parseInt(parts[1])-1, y = parseInt(parts[2]);
+    var date = new Date(y, m, d);
+    var diaNom = DIAS_ES[date.getDay()];
+    var mesNom = MESES[m];
+    // Check if today or yesterday
+    var today = new Date(); today.setHours(0,0,0,0);
+    var diff = Math.round((today - date) / 86400000);
+    var extra = diff === 0 ? ' — Hoy' : diff === 1 ? ' — Ayer' : '';
+    return diaNom + ' ' + d + ' de ' + mesNom + ' de ' + y + extra;
+  }
+
   var h = '';
-  if (allSecSelected()) {
-    SECTORES.forEach(function(sec) {
-      var sp=f.filter(function(p){return p.sector===sec;}); if(!sp.length)return;
-      h += '<div class="group-sector"><div class="group-sector-title">'+sec+'</div>';
-      JUR_ORDER.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+jur+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
-      h += '</div>';
-    });
-  } else { h = f.map(cardHTML).join(''); }
+  groupOrder.forEach(function(fecha) {
+    var ps = groups[fecha];
+    h += '<div style="margin-bottom:1.5rem">';
+    h += '<div style="font-size:14px;font-weight:600;color:var(--text);padding:10px 0 8px;border-bottom:2px solid var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:8px">';
+    h += '<i class="ti ti-calendar" style="color:var(--blue);font-size:16px"></i>';
+    h += fechaLabel(fecha);
+    h += '<span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">('+ps.length+' proyecto'+(ps.length!==1?'s':'')+')</span>';
+    h += '</div>';
+    if (allSecSelected()) {
+      SECTORES.forEach(function(sec) {
+        var sp = ps.filter(function(p){return p.sector===sec;}); if (!sp.length) return;
+        h += '<div class="group-sector-title" style="margin-top:8px">'+sec+'</div>';
+        JUR_ORDER.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+jur+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
+      });
+    } else {
+      h += ps.map(cardHTML).join('');
+    }
+    h += '</div>';
+  });
   list.innerHTML = h;
 }
 
