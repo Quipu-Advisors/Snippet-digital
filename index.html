@@ -451,7 +451,8 @@ async function changeDate(iso) {
 
 async function renderConsolidado(container) {
   showOverlay('Cargando consolidado...');
-  PROJECTS=await dbGetProjects(viewDate); SELS=await dbGetSelections(viewDate);
+  try { PROJECTS = await dbGetAllProjects(); } catch(e) { PROJECTS = []; }
+  try { SELS = await dbGetAllSelections(); } catch(e) { SELS = {}; }
   hideOverlay();
   var mns=Object.keys(SELS); var allPids=new Set();
   mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){allPids.add(parseInt(pid));});});
@@ -459,9 +460,7 @@ async function renderConsolidado(container) {
   var h='<div class="admin-body"><div class="admin-card">';
   h+='<div class="admin-card-title"><i class="ti ti-table"></i> Panel consolidado <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+mns.length+' manager(s)</span></div>';
   h+='<div class="admin-card-sub">Selecciones enviadas por los managers.</div>';
-  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem"><label style="font-size:12px;color:var(--text2)">Fecha:</label>';
-  h+='<input type="date" value="'+viewDate+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);height:28px" onchange="consolidadoChangeDate(this.value)">';
-  h+='<button class="btn" style="font-size:12px;padding:5px 10px" onclick="renderConsolidado(document.getElementById(\'app\'))"><i class="ti ti-refresh"></i> Actualizar</button></div>';
+  h+='<button class="btn" style="font-size:12px;padding:5px 10px;margin-bottom:1rem" onclick="renderConsolidado(document.getElementById(\'app\'))"><i class="ti ti-refresh"></i> Actualizar</button>';
   if(!mns.length){h+='<div class="empty" style="padding:1.5rem"><i class="ti ti-clock" style="font-size:28px;display:block;margin:0 auto 10px"></i>Ningun manager ha enviado su seleccion todavia.</div>';}
   else{mns.forEach(function(m){h+=managerCard(m,SELS[m],PROJECTS);});}
   h+='</div>';
