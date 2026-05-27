@@ -566,7 +566,20 @@ async function addProject() {
 }
 
 async function deleteProject(id) { if(!confirm('Eliminar?'))return; showOverlay('Eliminando...'); PROJECTS=PROJECTS.filter(function(p){return p.id!==id;}); await dbSaveProjects(isoToday(),PROJECTS); hideOverlay(); renderAdmin(document.getElementById('app')); }
-async function clearDayProjects() { if(!confirm('Eliminar todos los proyectos de hoy?'))return; showOverlay('Eliminando...'); PROJECTS=[]; await dbSaveProjects(isoToday(),[]); hideOverlay(); renderAdmin(document.getElementById('app')); }
+async function clearDayProjects() { if(!confirm('Eliminar todos los proyectos de hoy?'))return; showOverlay('Eliminando...'); try { await dbSaveProjects(isoToday(),[]); } catch(e){} PROJECTS = await dbGetAllProjects(); hideOverlay(); renderAdmin(document.getElementById('app')); }
+
+async function clearSpecificDay() {
+  var picker = document.getElementById('del-date-picker');
+  if (!picker || !picker.value) { alert('Selecciona una fecha primero.'); return; }
+  var iso = picker.value;
+  var display = isoToDisplay(iso);
+  if (!confirm('Eliminar todos los proyectos del ' + display + '?')) return;
+  showOverlay('Eliminando...');
+  try { await dbSaveProjects(iso, []); } catch(e) {}
+  PROJECTS = await dbGetAllProjects();
+  hideOverlay();
+  renderAdmin(document.getElementById('app'));
+}
 
 function dragOver(e){e.preventDefault();document.getElementById('eml-drop').style.borderColor='var(--blue)';}
 function dragLeave(){document.getElementById('eml-drop').style.borderColor='';}
