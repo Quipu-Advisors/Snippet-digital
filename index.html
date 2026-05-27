@@ -525,7 +525,8 @@ function fallbackCopy(text,cb) {
 
 async function renderAdmin(container) {
   showOverlay('Cargando...');
-  PROJECTS=await dbGetProjects(isoToday());
+  try { PROJECTS = await dbGetAllProjects(); } catch(e) { PROJECTS = []; }
+  var todayProjects = PROJECTS.filter(function(p){ return p.fecha === isoToDisplay(isoToday()); });
   hideOverlay();
   var h='<div class="admin-body">';
   h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-mail"></i> Cargar desde Daily Legal Snippet (.eml)</div>';
@@ -546,10 +547,10 @@ async function renderAdmin(container) {
   h+='<div class="field-grid full"><div class="field"><label>Resumen (sin "tiene por objeto") *</label><textarea id="f-resumen"></textarea></div></div>';
   h+='<div class="field-grid"><div class="field"><label>Link expediente</label><input id="f-link-exp"></div><div class="field"><label>Link PDF</label><input id="f-link-pdf"></div></div>';
   h+='<div id="form-alert"></div><div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="addProject()"><i class="ti ti-plus"></i> Agregar</button></div></div>';
-  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos de hoy <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+PROJECTS.length+'</span></div>';
+  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos de hoy <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+todayProjects.length+'</span></div>';
   h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar hoy</button></div><div id="proj-list">';
-  if(PROJECTS.length){PROJECTS.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+p.num+'</span><span class="pi-title">'+p.title+'</span><span class="pi-jur">'+p.jur+' - '+p.sector+'</span><button class="pi-del" onclick="deleteProject('+p.id+')"><i class="ti ti-trash"></i></button></div>';});}
-  else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados.</div>';}
+  if(todayProjects.length){todayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+p.num+'</span><span class="pi-title">'+p.title+'</span><span class="pi-jur">'+p.jur+' - '+p.sector+'</span><button class="pi-del" onclick="deleteProject('+p.id+')"><i class="ti ti-trash"></i></button></div>';});}
+  else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados hoy.</div>';}
   h+='</div></div></div>'; container.innerHTML=h;
 }
 
