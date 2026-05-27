@@ -547,7 +547,7 @@ async function renderAdmin(container) {
   h+='<div class="field-grid"><div class="field"><label>Link expediente</label><input id="f-link-exp"></div><div class="field"><label>Link PDF</label><input id="f-link-pdf"></div></div>';
   h+='<div id="form-alert"></div><div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="addProject()"><i class="ti ti-plus"></i> Agregar</button></div></div>';
   h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos de hoy <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+todayProjects.length+'</span></div>';
-  h+='<div class="btn-row" style="margin-bottom:10px;flex-wrap:wrap;gap:8px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar hoy</button><input type="date" id="del-date-picker" style="font-size:12px;padding:4px 8px;border:1px solid#F09595;border-radius:6px;height:32px"><button class="btndanger" onclick="clearSpecificDay()"><i class="ti ti-trash"></i> Limpiar fecha seleccionada</button></div>';
+  h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar hoy</button></div><div id="proj-list">';
   if(todayProjects.length){todayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+p.num+'</span><span class="pi-title">'+p.title+'</span><span class="pi-jur">'+p.jur+' - '+p.sector+'</span><button class="pi-del" onclick="deleteProject('+p.id+')"><i class="ti ti-trash"></i></button></div>';});}
   else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados hoy.</div>';}
   h+='</div></div></div>'; container.innerHTML=h;
@@ -581,9 +581,25 @@ async function clearSpecificDay() {
   renderAdmin(document.getElementById('app'));
 }
 
-function dragOver(e){e.preventDefault();document.getElementById('eml-drop').style.borderColor='var(--blue)';}
-function dragLeave(){document.getElementById('eml-drop').style.borderColor='';}
-function dropFile(e){e.preventDefault();dragLeave();var f=e.dataTransfer.files[0];if(f)handleEmlFile(f);}
+async function processSnippetText() {
+  var text = document.getElementById('snippet-text').value.trim();
+  var snippetDate = document.getElementById('snippet-date').value || isoToday();
+  var alertEl = document.getElementById('snippet-alert');
+  if (!text) { alertEl.innerHTML='<div class="alert error">Pega el contenido del snippet primero.</div>'; return; }
+  showOverlay('Procesando con IA...','Extrayendo proyectos del snippet');
+  try {
+    var projects = await parseEmlWithAI(text, snippetDate);
+    if (!projects||!projects.length) { hideOverlay(); alertEl.innerHTML='<div class="alert error">No se encontraron proyectos.</div>'; return; }
+    var existing = await dbGetProjects(snippetDate);
+    var merged = existing.concat(projects.map(function(p){p.id=Date.now()+Math.random();return p;}));
+    await dbSaveProjects(snippetDate, merged);
+    PROJECTS = await dbGetAllProjects();
+    hideOverlay();
+    alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> '+projects.length+' proyectos cargados para el '+isoToDisplay(snippetDate)+'</div>';
+    document.getElementById('snippet-text').value='';
+    setTimeout(function(){renderAdmin(document.getElementById('app'));},1500);
+  } catch(err) { hideOverlay(); alertEl.innerHTML='<div class="alert error">Error: '+err.message+'</div>'; }
+}
 
 async function handleEmlFile(file) {
   if(!file)return;
