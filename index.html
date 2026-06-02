@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snippet Digital</title>
+<title>Smart Snippet</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.31.0/iconfont/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -29,11 +29,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:380px}
 .login-title{font-size:16px;font-weight:600;margin-bottom:4px}
 .login-sub{font-size:13px;color:var(--text3);margin-bottom:1.5rem}
-.login-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:8px}
-.login-opt:hover{border-color:var(--blue);background:var(--blue-bg)}
-.login-opt i{font-size:22px;color:var(--blue)}
+.login-opt{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:6px;background:var(--surface)}
+.login-opt:last-child{margin-bottom:0}
+.login-opt i{font-size:20px}
 .login-opt strong{font-size:13px;display:block}
 .login-opt span{font-size:11px;color:var(--text3)}
+.lg-group{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:14px}
+.lg-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.lg-research{background:var(--blue-bg);border-color:#BCD6F2}
+.lg-research .lg-group-title{color:var(--blue-dark)}
+.lg-research .login-opt i{color:var(--blue)}
+.lg-research .login-opt:hover{border-color:var(--blue);background:#F2F8FE}
+.lg-pa{background:var(--green-bg);border-color:var(--green-border)}
+.lg-pa .lg-group-title{color:var(--green)}
+.lg-pa .login-opt i{color:var(--green)}
+.lg-pa .login-opt:hover{border-color:var(--green-border);background:#F4F9EC}
 .login-foot{text-align:center;margin-top:14px;font-size:11px;color:var(--text3)}
 .login-foot a{color:var(--text3);text-decoration:underline;cursor:pointer}
 .gate-input{width:100%;font-size:14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);outline:none;margin-bottom:10px}
@@ -148,7 +158,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="overlay-box"><i class="ti ti-loader-2 spin"></i><p id="overlay-msg">Cargando...</p><small id="overlay-sub"></small></div>
 </div>
 <nav class="nav">
-  <div class="nav-logo"><i class="ti ti-news" style="color:var(--blue)"></i> Snippet <span>Digital</span></div>
+  <div class="nav-logo"><i class="ti ti-news" style="color:var(--blue)"></i> Smart <span>Snippet</span></div>
   <div id="nav-tabs"></div>
   <div class="nav-right" id="nav-right"></div>
 </nav>
@@ -224,7 +234,10 @@ var PROVINCIAS = ['CABA','Buenos Aires','Catamarca','Chaco','Chubut','Cordoba','
 var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']);
 var CLIENTS = ['Amazon (sector)','Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Syngenta pos/neg/neutro','Airbnb','World','Tetrapak','Sanofi','Rio Tinto'];
 var IMPACT = ['-','Alto','Medio','Bajo','N/A'];
-var MANAGERS = ['Camila (admin)','Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros'];
+var RESEARCH = ['Camila (admin)','Victoria','Lucas Sammartino','Lucas MS'];
+var PUBLIC_AFFAIRS = ['Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros','Nicolás'];
+var MANAGERS = RESEARCH.concat(PUBLIC_AFFAIRS);
+function isResearch(name) { return RESEARCH.indexOf(name) >= 0; }
 var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema:'Inteligencia artificial',keys:['inteligencia artificial','algoritm']},{tema:'Grooming',keys:['grooming']},{tema:'Plataformas digitales',keys:['plataforma digital']},{tema:'Derechos laborales',keys:['laboral','trabajador']},{tema:'Redes Sociales',keys:['red social','redes sociales']},{tema:'Educacion',keys:['educati','escolar','escuela']},{tema:'Impuestos',keys:['fiscal','tributari','impuesto']},{tema:'Ambiental',keys:['ambiental','residuo']},{tema:'Medicamentos',keys:['medicamento','farmaco']},{tema:'Biocombustibles',keys:['biocombustible','hidrocarburo']},{tema:'Litio',keys:['litio']},{tema:'Semillas',keys:['semilla']},{tema:'Turismo',keys:['turismo']},{tema:'Lobby',keys:['lobby','cabildeo']},{tema:'Salud mental',keys:['suicida','salud mental']},{tema:'Restricciones comerciales',keys:['exportacion','arancel']}];
 
 // Buckets de fallback para que nada desaparezca de los filtros.
@@ -294,7 +307,7 @@ function buildNav() {
   var tabs = document.getElementById('nav-tabs');
   var right = document.getElementById('nav-right');
   if (!currentUser) { tabs.innerHTML = ''; if (right) right.innerHTML = navFecha(); return; }
-  var isAdmin = currentUser === 'Camila (admin)';
+  var isAdmin = isResearch(currentUser);
   var h;
   if (isAdmin) {
     // Secuencia temporal del flujo admin: cargar -> revisar -> consolidar.
@@ -321,7 +334,7 @@ function switchTab(t) { document.querySelectorAll('.nav-tab').forEach(function(e
 function renderGate() {
   currentUser = null; buildNav();
   var h = '<div class="login-wrap"><div class="login-card">';
-  h += '<div class="login-title">Snippet Digital</div>';
+  h += '<div class="login-title">Smart Snippet</div>';
   h += '<div class="login-sub">Ingresá la contraseña del equipo para continuar</div>';
   h += '<input type="password" id="gate-pw" class="gate-input" placeholder="Contraseña del equipo" onkeydown="if(event.key===\'Enter\')doGate()" autofocus>';
   h += '<button class="btn primary" style="width:100%;justify-content:center" onclick="doGate()"><i class="ti ti-login"></i> Entrar</button>';
@@ -340,10 +353,18 @@ function doGate() {
 }
 
 function renderLogin() {
-  var h = '<div class="login-wrap"><div class="login-card"><div class="login-title">Bienvenido a Snippet Digital</div><div class="login-sub">Selecciona tu nombre para continuar</div>';
-  MANAGERS.forEach(function(m) {
-    h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ' + (m==='Camila (admin)'?'ti-shield-check':'ti-user') + '"></i>';
-    h += '<div><strong>' + esc(m) + '</strong><span>' + (m==='Camila (admin)'?'Administrador - Acceso completo':'Manager - Seleccion de proyectos') + '</span></div></div>';
+  var groups = [
+    {title: 'Research', cls: 'lg-research', icon: 'ti-flask', names: RESEARCH},
+    {title: 'Public Affairs', cls: 'lg-pa', icon: 'ti-speakerphone', names: PUBLIC_AFFAIRS}
+  ];
+  var h = '<div class="login-wrap"><div class="login-card">';
+  h += '<div class="login-title">Bienvenido a Smart Snippet</div><div class="login-sub">Seleccioná tu nombre para continuar</div>';
+  groups.forEach(function(g) {
+    h += '<div class="lg-group ' + g.cls + '"><div class="lg-group-title"><i class="ti ' + g.icon + '"></i> ' + g.title + '</div>';
+    g.names.forEach(function(m) {
+      h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><div><strong>' + esc(m) + '</strong></div></div>';
+    });
+    h += '</div>';
   });
   h += '<div class="login-foot"><a onclick="teamLogout()">Cerrar sesión del equipo</a></div>';
   h += '</div></div>';
@@ -360,7 +381,7 @@ async function login(name) {
     SELS = await dbGetSelections(viewDate);
   } catch(e) { hideOverlay(); alert('No se pudieron cargar los datos: ' + e.message); return; }
   loadLocalFromSels();
-  hideOverlay(); buildNav(); switchTab(currentUser === 'Camila (admin)' ? 'adm' : 'mgr');
+  hideOverlay(); buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
 }
 function loadLocalFromSels() {
   localSel = {}; localImp = {};
