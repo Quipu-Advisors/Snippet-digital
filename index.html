@@ -24,8 +24,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .login-opt i{font-size:22px;color:var(--blue)}
 .login-opt strong{font-size:13px;display:block}
 .login-opt span{font-size:11px;color:var(--text3)}
+.login-foot{text-align:center;margin-top:14px;font-size:11px;color:var(--text3)}
+.login-foot a{color:var(--text3);text-decoration:underline;cursor:pointer}
+.gate-input{width:100%;font-size:14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);outline:none;margin-bottom:10px}
+.gate-input:focus{border-color:var(--blue)}
 .m-hdr{display:flex;align-items:center;gap:10px;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
 .m-hdr-title{font-size:15px;font-weight:500}
+.m-date{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.m-date input{font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;color:var(--text)}
 .history-badge{font-size:11px;padding:2px 8px;border-radius:var(--radius);background:var(--yellow-bg);color:var(--yellow);font-weight:500}
 .toolbar{display:flex;align-items:center;gap:10px;padding:.65rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;position:relative}
 .toolbar label{font-size:13px;color:var(--text2)}
@@ -94,9 +100,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pi-title{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pi-jur{font-size:11px;color:var(--text3);white-space:nowrap}
 .pi-del{padding:4px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);cursor:pointer}
-.eml-drop{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:2rem;text-align:center;cursor:pointer;background:var(--bg)}
-.eml-drop:hover{border-color:var(--blue);background:var(--blue-bg)}
-.eml-input{display:none}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center}
 .overlay.show{display:flex}
 .overlay-box{background:var(--surface);border-radius:var(--radius-lg);padding:2rem;text-align:center;max-width:320px}
@@ -131,48 +134,71 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </nav>
 <div id="app"></div>
 <script>
-var SB_URL = 'https://xyqmtqsczscdejcwusce.supabase.co';
-var SB_KEY = 'sb_publishable_LHaQlBOrhJ5CRyISMiuXhg_0s6Unaxf';
+/* ============================================================
+   CONFIGURACION
+   ============================================================ */
+var SB_URL  = 'https://xyqmtqsczscdejcwusce.supabase.co';
+// Clave PUBLICA (anon/publishable) de Supabase.
+var SB_ANON = 'sb_publishable_LHaQlBOrhJ5CRyISMiuXhg_0s6Unaxf';
 
+// >>> Contraseña compartida del equipo. CAMBIALA por la que quieras y compartila solo
+//     con el equipo. Es un control liviano: la clave viaja en el HTML, así que sirve
+//     para que la app no quede a la vista de cualquiera que caiga de casualidad, no
+//     como seguridad fuerte. La URL se comparte solo dentro del equipo.
+var TEAM_PASSWORD = 'bachacero';
+
+/* ============================================================
+   GATE (contraseña del equipo, lado cliente)
+   ============================================================ */
+function gatePassed() { try { return localStorage.getItem('sd_gate') === '1'; } catch(e) { return false; } }
+function setGatePassed(v) { try { if (v) localStorage.setItem('sd_gate','1'); else localStorage.removeItem('sd_gate'); } catch(e) {} }
+
+/* ============================================================
+   CAPA SUPABASE (REST)
+   ============================================================ */
 async function sbFetch(path, method, body) {
-  var opts = {method: method||'GET', headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+  var opts = {method: method || 'GET', headers: {'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': 'application/json', 'Prefer': 'return=representation'}};
   if (body) opts.body = JSON.stringify(body);
-  var r = await fetch(SB_URL+'/rest/v1/'+path, opts);
+  var r = await fetch(SB_URL + '/rest/v1/' + path, opts);
   var t = await r.text();
+  if (!r.ok) throw new Error('DB ' + r.status + (t ? ': ' + t.slice(0, 120) : ''));
   return t ? JSON.parse(t) : null;
 }
+
+// Proyectos de UNA fecha (ISO). Cada fila projects = {date, data:[...proyectos]}.
+async function dbGetProjects(d) {
+  try { var r = await sbFetch('projects?date=eq.' + d + '&select=data'); return normalizeProjects((r && r[0] && r[0].data) || []); }
+  catch(e) { return []; }
+}
+// Todos los proyectos de todas las fechas (para vistas globales).
 async function dbGetAllProjects() {
   try {
     var r = await sbFetch('projects?select=date,data&order=date.desc');
     var all = [];
-    (r||[]).forEach(function(row){ (row.data||[]).forEach(function(p){ all.push(p); }); });
-    // Sort by fecha desc
-    all.sort(function(a,b){
-      var da = a.fecha ? a.fecha.split('/').reverse().join('') : '';
-      var db = b.fecha ? b.fecha.split('/').reverse().join('') : '';
-      return db.localeCompare(da);
-    });
+    (r || []).forEach(function(row){ (row.data || []).forEach(function(p){ all.push(p); }); });
+    all = normalizeProjects(all);
+    all.sort(function(a,b){ return fechaSortKey(b.fecha).localeCompare(fechaSortKey(a.fecha)); });
     return all;
   } catch(e) { return []; }
 }
-
-async function dbGetAllSelections() {
-  try {
-    var r = await sbFetch('selections?select=manager,data');
-    var out = {};
-    (r||[]).forEach(function(x){
-      if (!out[x.manager]) out[x.manager] = {};
-      Object.assign(out[x.manager], x.data);
-    });
-    return out;
-  } catch(e) { return {}; }
+// Reemplaza la fila de UNA fecha con la lista dada (solo proyectos de esa fecha).
+async function dbSaveProjects(d, ps) {
+  await sbFetch('projects?date=eq.' + d, 'DELETE');
+  if (ps.length) await sbFetch('projects', 'POST', {id: Date.now(), date: d, data: ps});
+}
+// Selecciones de UNA fecha: {manager: data}.
+async function dbGetSelections(d) {
+  try { var r = await sbFetch('selections?date=eq.' + d + '&select=manager,data'); var o = {}; (r || []).forEach(function(x){ o[x.manager] = x.data; }); return o; }
+  catch(e) { return {}; }
+}
+async function dbSaveSelection(d, m, data) {
+  await sbFetch('selections?date=eq.' + d + '&manager=eq.' + encodeURIComponent(m), 'DELETE');
+  await sbFetch('selections', 'POST', {date: d, manager: m, data: data, updated_at: new Date().toISOString()});
 }
 
-
-async function dbSaveProjects(d, ps) { try { await sbFetch('projects?date=eq.'+d,'DELETE'); } catch(e) {} if (ps.length) try { await sbFetch('projects','POST',{id:Date.now(),date:d,data:ps}); } catch(e) {} }
-async function dbGetSelections(d) { try { var r = await sbFetch('selections?date=eq.'+d+'&select=manager,data'); var o = {}; (r||[]).forEach(function(x){o[x.manager]=x.data;}); return o; } catch(e) { return {}; } }
-async function dbSaveSelection(d, m, data) { try { await sbFetch('selections?date=eq.'+d+'&manager=eq.'+encodeURIComponent(m),'DELETE'); } catch(e) {} try { await sbFetch('selections','POST',{date:d,manager:m,data:data,updated_at:new Date().toISOString()}); } catch(e) {} }
-
+/* ============================================================
+   CONSTANTES DE NEGOCIO
+   ============================================================ */
 var SECTORES = ['Coyuntura general','Consumo masivo','Medios de pago','Tecnologia','Automotriz','Agroindustria','Petroquimicos','Mineria','Turismo','Salud','Ambiente'];
 var PROVINCIAS = ['CABA','Buenos Aires','Catamarca','Chaco','Chubut','Cordoba','Corrientes','Entre Rios','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquen','Rio Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucuman'];
 var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']);
@@ -181,17 +207,51 @@ var IMPACT = ['-','Alto','Medio','Bajo','N/A'];
 var MANAGERS = ['Camila (admin)','Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros'];
 var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema:'Inteligencia artificial',keys:['inteligencia artificial','algoritm']},{tema:'Grooming',keys:['grooming']},{tema:'Plataformas digitales',keys:['plataforma digital']},{tema:'Derechos laborales',keys:['laboral','trabajador']},{tema:'Redes Sociales',keys:['red social','redes sociales']},{tema:'Educacion',keys:['educati','escolar','escuela']},{tema:'Impuestos',keys:['fiscal','tributari','impuesto']},{tema:'Ambiental',keys:['ambiental','residuo']},{tema:'Medicamentos',keys:['medicamento','farmaco']},{tema:'Biocombustibles',keys:['biocombustible','hidrocarburo']},{tema:'Litio',keys:['litio']},{tema:'Semillas',keys:['semilla']},{tema:'Turismo',keys:['turismo']},{tema:'Lobby',keys:['lobby','cabildeo']},{tema:'Salud mental',keys:['suicida','salud mental']},{tema:'Restricciones comerciales',keys:['exportacion','arancel']}];
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {};
+// Buckets de fallback para que nada desaparezca de los filtros.
+var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
+var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-function isoToday() { return new Date().toISOString().slice(0,10); }
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {};
+var _idSeq = 0;
+
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
+function isoToday() {
+  var d = new Date(), p = function(n){ return (n<10?'0':'') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
 function isoToDisplay(iso) { if (!iso) return ''; var p = iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
-function todayStr() { return new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function todayStr() { return isoToDisplay(isoToday()); }
+function fechaSortKey(f) { return (f && f.indexOf('/')>=0) ? f.split('/').reverse().join('') : ''; }
+function newId() { return String(Date.now()) + String(1000 + (_idSeq++ % 9000)); }
 function showOverlay(msg, sub) { document.getElementById('overlay').classList.add('show'); document.getElementById('overlay-msg').textContent = msg; document.getElementById('overlay-sub').textContent = sub||''; }
 function hideOverlay() { document.getElementById('overlay').classList.remove('show'); }
 
+// Escapa texto para insertar en HTML (evita romper el render / XSS).
+function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+// URL segura para usar en href (solo http/https).
+function safeUrl(u) { u = String(u||'').trim(); return /^https?:\/\//i.test(u) ? esc(u) : ''; }
+// Normaliza para comparar ignorando acentos/mayusculas.
+function norm(s) { return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+
+function canonSector(s) { var n = norm(s); for (var i=0;i<SECTORES.length;i++) if (norm(SECTORES[i])===n) return SECTORES[i]; return s ? SECTOR_OTRO : SECTOR_OTRO; }
+function canonJur(j) { var n = norm(j); for (var i=0;i<JUR_ORDER.length;i++) if (norm(JUR_ORDER[i])===n) return JUR_ORDER[i]; return j ? JUR_OTRA : JUR_OTRA; }
+
+// Limpia/normaliza una lista de proyectos al cargarla.
+function normalizeProjects(list) {
+  return (list||[]).map(function(p){
+    p.id = (p.id==null) ? newId() : String(p.id);
+    p.sector = canonSector(p.sector);
+    p.jur = canonJur(p.jur);
+    if (!p.fecha) p.fecha = '';
+    return p;
+  });
+}
+
 function mapTema(title, resumen) {
-  var txt = (title+' '+resumen).toLowerCase();
-  for (var i = 0; i < TEMAS.length; i++) { for (var j = 0; j < TEMAS[i].keys.length; j++) { if (txt.indexOf(TEMAS[i].keys[j]) >= 0) return TEMAS[i].tema; } }
+  var txt = norm((title||'') + ' ' + (resumen||''));
+  for (var i = 0; i < TEMAS.length; i++) { for (var j = 0; j < TEMAS[i].keys.length; j++) { if (txt.indexOf(norm(TEMAS[i].keys[j])) >= 0) return TEMAS[i].tema; } }
   return 'Otro';
 }
 function mapOrg(org) {
@@ -203,6 +263,9 @@ function mapOrg(org) {
   return org||'';
 }
 
+/* ============================================================
+   NAV / RUTEO
+   ============================================================ */
 function buildNav() {
   var tabs = document.getElementById('nav-tabs');
   if (!currentUser) { tabs.innerHTML = ''; return; }
@@ -213,38 +276,75 @@ function buildNav() {
     h += '<div class="nav-tab" id="tab-adm" onclick="switchTab(\'adm\')"><i class="ti ti-settings"></i> Cargar proyectos</div>';
   }
   h += '<div style="margin-left:8px;display:flex;align-items:center;gap:6px;padding:0 8px;border-left:1px solid var(--border)">';
-  h += '<span style="font-size:12px;color:var(--text2)">'+currentUser+'</span>';
+  h += '<span style="font-size:12px;color:var(--text2)">' + esc(currentUser) + '</span>';
   h += '<button style="font-size:11px;padding:3px 8px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer" onclick="logout()">Salir</button></div>';
   tabs.innerHTML = h;
 }
 
 function switchTab(t) { document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');}); var el = document.getElementById('tab-'+t); if (el) el.classList.add('active'); renderApp(t); }
 
+/* ============================================================
+   GATE (contraseña del equipo) + LOGIN (nombre)
+   ============================================================ */
+function renderGate() {
+  currentUser = null; buildNav();
+  var h = '<div class="login-wrap"><div class="login-card">';
+  h += '<div class="login-title">Snippet Digital</div>';
+  h += '<div class="login-sub">Ingresá la contraseña del equipo para continuar</div>';
+  h += '<input type="password" id="gate-pw" class="gate-input" placeholder="Contraseña del equipo" onkeydown="if(event.key===\'Enter\')doGate()" autofocus>';
+  h += '<button class="btn primary" style="width:100%;justify-content:center" onclick="doGate()"><i class="ti ti-login"></i> Entrar</button>';
+  h += '<div id="gate-alert"></div>';
+  h += '</div></div>';
+  document.getElementById('app').innerHTML = h;
+  var f = document.getElementById('gate-pw'); if (f) f.focus();
+}
+
+function doGate() {
+  var pw = (document.getElementById('gate-pw').value || '').trim();
+  var al = document.getElementById('gate-alert');
+  if (!pw) { al.innerHTML = '<div class="alert error">Escribí la contraseña.</div>'; return; }
+  if (pw === TEAM_PASSWORD) { setGatePassed(true); renderLogin(); }
+  else { al.innerHTML = '<div class="alert error">Contraseña incorrecta.</div>'; }
+}
+
 function renderLogin() {
   var h = '<div class="login-wrap"><div class="login-card"><div class="login-title">Bienvenido a Snippet Digital</div><div class="login-sub">Selecciona tu nombre para continuar</div>';
   MANAGERS.forEach(function(m) {
-    h += '<div class="login-opt" onclick="login(\''+m+'\')"><i class="ti '+(m==='Camila (admin)'?'ti-shield-check':'ti-user')+'"></i>';
-    h += '<div><strong>'+m+'</strong><span>'+(m==='Camila (admin)'?'Administrador - Acceso completo':'Manager - Seleccion de proyectos')+'</span></div></div>';
+    h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ' + (m==='Camila (admin)'?'ti-shield-check':'ti-user') + '"></i>';
+    h += '<div><strong>' + esc(m) + '</strong><span>' + (m==='Camila (admin)'?'Administrador - Acceso completo':'Manager - Seleccion de proyectos') + '</span></div></div>';
   });
+  h += '<div class="login-foot"><a onclick="teamLogout()">Cerrar sesión del equipo</a></div>';
   h += '</div></div>';
   document.getElementById('app').innerHTML = h;
 }
 
+function teamLogout() { setGatePassed(false); renderGate(); }
+
 async function login(name) {
   currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {};
   showOverlay('Cargando proyectos...');
-  PROJECTS = await dbGetAllProjects();
-  SELS = await dbGetAllSelections();
-  if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){ localSel[pid]=true; localImp[pid]=SELS[currentUser][pid].impacts||{}; }); }
-  hideOverlay(); buildNav(); renderApp('mgr');
+  try {
+    PROJECTS = await dbGetProjects(viewDate);
+    SELS = await dbGetSelections(viewDate);
+  } catch(e) { hideOverlay(); alert('No se pudieron cargar los datos: ' + e.message); return; }
+  loadLocalFromSels();
+  hideOverlay(); buildNav(); switchTab('mgr');
+}
+function loadLocalFromSels() {
+  localSel = {}; localImp = {};
+  if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){ localSel[pid] = true; localImp[pid] = SELS[currentUser][pid].impacts || {}; }); }
 }
 function logout() { currentUser=null; localSel={}; localImp={}; PROJECTS=[]; SELS={}; buildNav(); renderLogin(); }
 function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr')renderManager(app); else if(tab==='consolidado')renderConsolidado(app); else if(tab==='adm')renderAdmin(app); }
 
+/* ============================================================
+   VISTA MANAGER (seleccion)
+   ============================================================ */
 function renderManager(container) {
   var h = '<div class="m-hdr">';
   h += '<i class="ti ti-file-text" style="font-size:20px;color:var(--text2)"></i>';
   h += '<span class="m-hdr-title">Proyectos</span>';
+  h += '<div class="m-date"><label for="mgr-date">Día</label><input type="date" id="mgr-date" value="' + viewDate + '" max="' + isoToday() + '" onchange="changeDate(this.value)"></div>';
   h += '</div>';
   h += '<div class="toolbar"><label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
@@ -252,20 +352,21 @@ function renderManager(container) {
   h += '<div class="dd-menu" id="dd-jur-menu"><div class="dd-item" onclick="toggleAllJur(event)"><input type="checkbox" id="chk-all-jur" checked> Todas</div><hr class="dd-divider">';
   h += '<div class="dd-item" onclick="toggleJur(\'Nacional\',event)"><input type="checkbox" class="jur-chk" value="Nacional" checked> Nacional</div><hr class="dd-divider">';
   h += '<div class="dd-group-label">Provincial</div><div class="dd-item" onclick="toggleAllProv(event)"><input type="checkbox" id="chk-all-prov" checked> Todas las provincias</div>';
-  h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Municipal</div>';
-  h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div></div></div></div>';
+  h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
+  h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
+  h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div></div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para enviar</span>';
   h += '<button class="btn primary" onclick="submitSelection()"><i class="ti ti-send"></i> Enviar seleccion</button></div></div>';
   container.innerHTML = h;
-  buildFilters(); renderList();
+  buildFilters(); renderList(); updateFinfo();
 }
 
 function buildFilters() {
   var si = document.getElementById('sec-items');
-  if (si) si.innerHTML = SECTORES.map(function(s){ return '<div class="dd-item" onclick="toggleSec(\''+s+'\',event)"><input type="checkbox" class="sec-chk" value="'+s+'" checked> '+s+'</div>'; }).join('');
+  if (si) si.innerHTML = SECTOR_FILTER.map(function(s){ return '<div class="dd-item" onclick="toggleSec(\''+s.replace(/'/g,"\\'")+'\',event)"><input type="checkbox" class="sec-chk" value="'+esc(s)+'" checked> '+esc(s)+'</div>'; }).join('');
   var pi = document.getElementById('prov-items');
-  if (pi) pi.innerHTML = PROVINCIAS.map(function(p){ return '<div class="dd-item sub" onclick="toggleJur(\''+p+'\',event)"><input type="checkbox" class="jur-chk prov-chk" value="'+p+'" checked> '+p+'</div>'; }).join('');
+  if (pi) pi.innerHTML = PROVINCIAS.map(function(p){ return '<div class="dd-item sub" onclick="toggleJur(\''+p.replace(/'/g,"\\'")+'\',event)"><input type="checkbox" class="jur-chk prov-chk" value="'+esc(p)+'" checked> '+esc(p)+'</div>'; }).join('');
 }
 
 function getActiveSectors() { return Array.from(document.querySelectorAll('.sec-chk:checked')).map(function(c){return c.value;}); }
@@ -281,21 +382,17 @@ function toggleAllJur(e) { e.stopPropagation(); var a=document.getElementById('c
 function toggleAllProv(e) { e.stopPropagation(); var a=document.getElementById('chk-all-prov'); if(e.target!==a)a.checked=!a.checked; document.querySelectorAll('.prov-chk').forEach(function(c){c.checked=a.checked;}); updateJurBtn(); renderList(); }
 document.addEventListener('click', function(){ var sm=document.getElementById('dd-sec-menu'),jm=document.getElementById('dd-jur-menu'); if(sm)sm.classList.remove('open'); if(jm)jm.classList.remove('open'); });
 
-function initImp(id) { if (!localImp[id]) { localImp[id]={}; CLIENTS.forEach(function(c){localImp[id][c]='-';}); } }
+function initImp(id) { id=String(id); if (!localImp[id]) { localImp[id]={}; CLIENTS.forEach(function(c){localImp[id][c]='-';}); } }
 
 function getOtherImpacts(pid) {
-  // Returns [{name, client, level}] from other managers who already submitted
+  pid = String(pid);
   var results = [];
   Object.keys(SELS).forEach(function(mname) {
     if (mname === currentUser) return;
     var sel = SELS[mname];
     if (!sel[pid]) return;
     var imp = sel[pid].impacts || {};
-    CLIENTS.forEach(function(c) {
-      if (imp[c] && imp[c] !== '-') {
-        results.push({name: mname, client: c, level: imp[c]});
-      }
-    });
+    CLIENTS.forEach(function(c) { if (imp[c] && imp[c] !== '-') results.push({name: mname, client: c, level: imp[c]}); });
   });
   return results;
 }
@@ -308,53 +405,52 @@ function impactBadgeStyle(level) {
 }
 
 function cardHTML(p) {
-  var isSel = !!localSel[p.id];
-  if (isSel) initImp(p.id);
+  var id = String(p.id);
+  var isSel = !!localSel[id];
+  if (isSel) initImp(id);
   var tema = mapTema(p.title, p.resumen);
-  var rf = 'El proyecto de ley tiene por objeto '+p.resumen;
+  var rf = 'El proyecto de ley tiene por objeto ' + (p.resumen||'');
   var rs = isSel ? rf : (rf.length>160 ? rf.substring(0,160)+'...' : rf);
-  var otherImps = getOtherImpacts(p.id);
+  var otherImps = getOtherImpacts(id);
+  var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
 
-  var h = '<div class="card'+(isSel?' sel':'')+'" onclick="toggleCard('+p.id+',event)" style="display:flex;gap:10px;padding:12px 14px">';
-
-  // Left: main content
+  var h = '<div class="card'+(isSel?' sel':'')+'" onclick="toggleCard(\''+id+'\',event)" style="display:flex;gap:10px;padding:12px 14px">';
   h += '<div style="flex:1;min-width:0">';
   h += '<div class="card-row" style="gap:10px">';
   h += '<div class="chk">'+(isSel?'<i class="ti ti-check" style="font-size:12px;color:#fff"></i>':'')+'</div>';
-  h += '<div class="cinfo"><div class="ctitle">'+p.title+'</div>';
-  h += '<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+p.fecha+'</span>';
-  h += '<span class="pill p-num">'+p.num+'</span><span class="pill p-tema">'+tema+'</span>';
-  h += '<span class="pill p-org">'+mapOrg(p.org)+'</span>';
-  if (p.linkExpediente) h += '<a href="'+p.linkExpediente+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:3px"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
-  if (p.linkTexto) h += '<a href="'+p.linkTexto+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:3px"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
-  h += '</div><div class="cresumen">'+rs+'</div>';
-  h += (isSel ? renderImp(p.id) : '');
+  h += '<div class="cinfo"><div class="ctitle">'+esc(p.title)+'</div>';
+  h += '<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
+  h += '<span class="pill p-num">'+esc(p.num)+'</span><span class="pill p-tema">'+esc(tema)+'</span>';
+  h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+  if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:3px"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
+  if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:3px"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
+  h += '</div><div class="cresumen">'+esc(rs)+'</div>';
+  h += (isSel ? renderImp(id) : '');
   h += '</div></div></div>';
 
-  // Right: other managers' impacts
   if (otherImps.length) {
     h += '<div onclick="event.stopPropagation()" style="min-width:130px;max-width:160px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--border-light);padding-left:10px;flex-shrink:0">';
     h += '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Impactos</div>';
     otherImps.forEach(function(x) {
       h += '<div style="display:flex;align-items:center;gap:5px">';
-      h += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;'+impactBadgeStyle(x.level)+'">'+x.level+'</span>';
-      h += '<span style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px" title="'+x.name+' - '+x.client+'">'+x.name.split(' ')[0]+' · '+x.client+'</span>';
+      h += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;'+impactBadgeStyle(x.level)+'">'+esc(x.level)+'</span>';
+      h += '<span style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px" title="'+esc(x.name+' - '+x.client)+'">'+esc(x.name.split(' ')[0]+' · '+x.client)+'</span>';
       h += '</div>';
     });
     h += '</div>';
   }
-
   h += '</div>';
   return h;
 }
 
 function renderImp(pid) {
-  initImp(pid);
+  pid = String(pid); initImp(pid);
   var imp = localImp[pid];
   var h = '<div class="impacts-section" onclick="event.stopPropagation()"><div class="impacts-title">Impacto por cliente</div><div class="impacts-grid">';
   CLIENTS.forEach(function(c) {
     var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
-    h += '<div class="imp-item"><span class="imp-label">'+c+'</span><select class="imp-select '+cls+'" onchange="setImp('+pid+',\''+c+'\',this.value);colorSel(this)">';
+    var cj = c.replace(/'/g,"\\'");
+    h += '<div class="imp-item"><span class="imp-label">'+esc(c)+'</span><select class="imp-select '+cls+'" onchange="setImp(\''+pid+'\',\''+cj+'\',this.value);colorSel(this)">';
     IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
     h += '</select></div>';
   });
@@ -362,63 +458,48 @@ function renderImp(pid) {
 }
 
 function colorSel(el) { el.className = 'imp-select '+(el.value==='Alto'?'alto':el.value==='Medio'?'medio':el.value==='Bajo'?'bajo':''); }
-function setImp(pid,client,val) { initImp(pid); localImp[pid][client]=val; }
+function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][client]=val; }
 
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
-  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0&&aJ.indexOf(p.jur)>=0;});
+  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0;});
   var list = document.getElementById('list'); if (!list) return;
-  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados.</div>'; return; }
+  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados para este día.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
 
-  // Group by fecha
-  var groups = {};
-  var groupOrder = [];
-  f.forEach(function(p) {
-    var fecha = p.fecha || 'Sin fecha';
-    if (!groups[fecha]) { groups[fecha] = []; groupOrder.push(fecha); }
-    groups[fecha].push(p);
-  });
-  // Sort dates desc (already sorted but enforce)
-  groupOrder.sort(function(a,b){
-    var da = a !== 'Sin fecha' ? a.split('/').reverse().join('') : '';
-    var db = b !== 'Sin fecha' ? b.split('/').reverse().join('') : '';
-    return db.localeCompare(da);
-  });
+  var groups = {}, groupOrder = [];
+  f.forEach(function(p) { var fecha = p.fecha || 'Sin fecha'; if (!groups[fecha]) { groups[fecha] = []; groupOrder.push(fecha); } groups[fecha].push(p); });
+  groupOrder.sort(function(a,b){ return fechaSortKey(b).localeCompare(fechaSortKey(a)); });
 
-  var DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   var DIAS_ES = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
   var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-
   function fechaLabel(fecha) {
     if (fecha === 'Sin fecha') return 'Sin fecha';
-    var parts = fecha.split('/');
-    if (parts.length !== 3) return fecha;
+    var parts = fecha.split('/'); if (parts.length !== 3) return fecha;
     var d = parseInt(parts[0]), m = parseInt(parts[1])-1, y = parseInt(parts[2]);
-    var date = new Date(y, m, d);
-    var diaNom = DIAS_ES[date.getDay()];
-    var mesNom = MESES[m];
-    // Check if today or yesterday
+    var date = new Date(y, m, d); var diaNom = DIAS_ES[date.getDay()]; var mesNom = MESES[m];
     var today = new Date(); today.setHours(0,0,0,0);
     var diff = Math.round((today - date) / 86400000);
     var extra = diff === 0 ? ' — Hoy' : diff === 1 ? ' — Ayer' : '';
     return diaNom + ' ' + d + ' de ' + mesNom + ' de ' + y + extra;
   }
 
+  // Orden de sectores y jurisdicciones incluyendo los buckets de fallback.
+  var SEC_ORDER = SECTORES.concat([SECTOR_OTRO]);
+  var JUR_FULL = JUR_ORDER.concat([JUR_OTRA]);
+
   var h = '';
   groupOrder.forEach(function(fecha) {
     var ps = groups[fecha];
     h += '<div style="margin-bottom:1.5rem">';
     h += '<div style="font-size:14px;font-weight:600;color:var(--text);padding:10px 0 8px;border-bottom:2px solid var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:8px">';
-    h += '<i class="ti ti-calendar" style="color:var(--blue);font-size:16px"></i>';
-    h += fechaLabel(fecha);
-    h += '<span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">('+ps.length+' proyecto'+(ps.length!==1?'s':'')+')</span>';
-    h += '</div>';
+    h += '<i class="ti ti-calendar" style="color:var(--blue);font-size:16px"></i>'+esc(fechaLabel(fecha));
+    h += '<span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">('+ps.length+' proyecto'+(ps.length!==1?'s':'')+')</span></div>';
     if (allSecSelected()) {
-      SECTORES.forEach(function(sec) {
+      SEC_ORDER.forEach(function(sec) {
         var sp = ps.filter(function(p){return p.sector===sec;}); if (!sp.length) return;
-        h += '<div class="group-sector-title" style="margin-top:8px">'+sec+'</div>';
-        JUR_ORDER.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+jur+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
+        h += '<div class="group-sector-title" style="margin-top:8px">'+esc(sec)+'</div>';
+        JUR_FULL.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+esc(jur)+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
       });
     } else {
       h += ps.map(cardHTML).join('');
@@ -428,40 +509,47 @@ function renderList() {
   list.innerHTML = h;
 }
 
-function toggleCard(id,e) { if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); }
+function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); }
 function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) listo(s) para enviar':'Selecciona proyectos para enviar'; }
+
+async function changeDate(iso) {
+  if (!iso) return;
+  viewDate = iso;
+  showOverlay('Cargando...');
+  try { PROJECTS = await dbGetProjects(iso); SELS = await dbGetSelections(iso); }
+  catch(e) { hideOverlay(); return; }
+  loadLocalFromSels();
+  hideOverlay();
+  renderList(); updateFinfo();
+}
 
 async function submitSelection() {
   var n=Object.keys(localSel).length; var s=document.getElementById('submit-status');
   if(!n){if(s)s.innerHTML='<div class="alert info">Selecciona al menos un proyecto.</div>';return;}
   showOverlay('Guardando seleccion...');
   var sd={}; Object.keys(localSel).forEach(function(pid){sd[pid]={impacts:localImp[pid]||{},ts:Date.now()};});
-  try { await dbSaveSelection(viewDate,currentUser,sd); SELS[currentUser]=sd; hideOverlay(); if(s)s.innerHTML='<div class="alert success"><i class="ti ti-check"></i> Seleccion enviada - '+n+' proyecto(s) guardados.</div>'; }
-  catch(e) { hideOverlay(); if(s)s.innerHTML='<div class="alert error">Error: '+e.message+'</div>'; }
+  try { await dbSaveSelection(viewDate,currentUser,sd); SELS[currentUser]=sd; hideOverlay(); if(s)s.innerHTML='<div class="alert success"><i class="ti ti-check"></i> Seleccion enviada — '+n+' proyecto(s) guardados.</div>'; }
+  catch(e) { hideOverlay(); if(s)s.innerHTML='<div class="alert error">Error: '+esc(e.message)+'</div>'; }
 }
 
-async function changeDate(iso) {
-  viewDate=iso; localSel={}; localImp={};
-  showOverlay('Cargando...');
-  PROJECTS=await dbGetProjects(iso); SELS=await dbGetSelections(iso);
-  hideOverlay();
-  var b=document.getElementById('date-badge'); if(b)b.style.display=iso!==isoToday()?'inline':'none';
-  renderList(); updateFinfo();
-}
-
+/* ============================================================
+   VISTA CONSOLIDADO (admin) — por día
+   ============================================================ */
 async function renderConsolidado(container) {
   showOverlay('Cargando consolidado...');
-  try { PROJECTS = await dbGetAllProjects(); } catch(e) { PROJECTS = []; }
-  try { SELS = await dbGetAllSelections(); } catch(e) { SELS = {}; }
+  try { PROJECTS = await dbGetProjects(viewDate); } catch(e) { PROJECTS = []; }
+  try { SELS = await dbGetSelections(viewDate); } catch(e) { SELS = {}; }
   hideOverlay();
-  var mns=Object.keys(SELS); var allPids=new Set();
-  mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){allPids.add(parseInt(pid));});});
-  var sp=PROJECTS.filter(function(p){return allPids.has(p.id);});
-  var h='<div class="admin-body"><div class="admin-card">';
+  var mns=Object.keys(SELS);
+  var selPids={}; mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){selPids[String(pid)]=true;});});
+  var sp=PROJECTS.filter(function(p){return selPids[String(p.id)];});
+  var h='<div class="admin-body">';
+  h+='<div class="m-date" style="justify-content:flex-end;margin-bottom:12px"><label for="cons-date">Día</label><input type="date" id="cons-date" value="'+viewDate+'" max="'+isoToday()+'" onchange="consolidadoChangeDate(this.value)"></div>';
+  h+='<div class="admin-card">';
   h+='<div class="admin-card-title"><i class="ti ti-table"></i> Panel consolidado <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+mns.length+' manager(s)</span></div>';
-  h+='<div class="admin-card-sub">Selecciones enviadas por los managers.</div>';
+  h+='<div class="admin-card-sub">Selecciones enviadas para el '+esc(isoToDisplay(viewDate))+'.</div>';
   h+='<button class="btn" style="font-size:12px;padding:5px 10px;margin-bottom:1rem" onclick="renderConsolidado(document.getElementById(\'app\'))"><i class="ti ti-refresh"></i> Actualizar</button>';
-  if(!mns.length){h+='<div class="empty" style="padding:1.5rem"><i class="ti ti-clock" style="font-size:28px;display:block;margin:0 auto 10px"></i>Ningun manager ha enviado su seleccion todavia.</div>';}
+  if(!mns.length){h+='<div class="empty" style="padding:1.5rem"><i class="ti ti-clock" style="font-size:28px;display:block;margin:0 auto 10px"></i>Ningun manager ha enviado su seleccion para este día.</div>';}
   else{mns.forEach(function(m){h+=managerCard(m,SELS[m],PROJECTS);});}
   h+='</div>';
   if(sp.length){
@@ -469,19 +557,19 @@ async function renderConsolidado(container) {
     h+='<div class="admin-card-sub">Impacto mas alto entre managers como definitivo.</div>';
     h+='<div class="btn-row"><button class="btn primary" onclick="copyConsolidado()"><i class="ti ti-copy"></i> Copiar todo para Sheets</button>';
     h+='<span id="copy-ok" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
-    h+='<div class="cprev">'+buildRows(sp,SELS).split('\n').map(function(r){return r.split('\t').slice(0,6).join(' | ')+' | ...';}).join('\n')+'</div></div>';
+    h+='<div class="cprev">'+esc(buildRows(sp,SELS).split('\n').map(function(r){return r.split('\t').slice(0,6).join(' | ')+' | ...';}).join('\n'))+'</div></div>';
   }
   h+='</div>'; container.innerHTML=h;
 }
 
-async function consolidadoChangeDate(iso) { viewDate=iso; await renderConsolidado(document.getElementById('app')); }
+async function consolidadoChangeDate(iso) { if(!iso)return; viewDate=iso; await renderConsolidado(document.getElementById('app')); }
 
 function managerCard(name,sel,projects) {
-  var pids=Object.keys(sel).map(Number); var ps=projects.filter(function(p){return pids.indexOf(p.id)>=0;});
+  var ps=projects.filter(function(p){return sel[String(p.id)];});
   var h='<div class="mgr-card"><div class="mgr-hdr"><i class="ti ti-user" style="color:var(--blue);font-size:16px"></i>';
-  h+='<span class="mgr-name">'+name+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
-  h+='<button class="mgr-clear" onclick="clearMgrSel(\''+name+'\')"><i class="ti ti-trash"></i></button></div><div class="mgr-projs">';
-  ps.forEach(function(p){ var imp=(sel[p.id]&&sel[p.id].impacts)||{}; var nd=Object.entries(imp).filter(function(x){return x[1]&&x[1]!=='-';}); h+='<div class="mgr-proj"><span class="mgr-pnum">'+p.num+'</span><span class="mgr-ptitle">'+p.title+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+x[1].toLowerCase()+'">'+x[0]+': '+x[1]+'</span>';}).join('')+'</div></div>'; });
+  h+='<span class="mgr-name">'+esc(name)+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
+  h+='<button class="mgr-clear" onclick="clearMgrSel(\''+name.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i></button></div><div class="mgr-projs">';
+  ps.forEach(function(p){ var imp=(sel[String(p.id)]&&sel[String(p.id)].impacts)||{}; var nd=Object.entries(imp).filter(function(x){return x[1]&&x[1]!=='-';}); h+='<div class="mgr-proj"><span class="mgr-pnum">'+esc(p.num)+'</span><span class="mgr-ptitle">'+esc(p.title)+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+esc(String(x[1]).toLowerCase())+'">'+esc(x[0]+': '+x[1])+'</span>';}).join('')+'</div></div>'; });
   h+='</div></div>'; return h;
 }
 
@@ -494,22 +582,22 @@ async function clearMgrSel(name) {
 
 function mergeImpacts(pids,sels) {
   var order={'-':0,'N/A':1,'Bajo':2,'Medio':3,'Alto':4}; var merged={};
-  pids.forEach(function(pid){ merged[pid]={}; CLIENTS.forEach(function(c){ var best='-'; Object.values(sels).forEach(function(sel){var v=(sel[pid]&&sel[pid].impacts&&sel[pid].impacts[c])||'-';if((order[v]||0)>(order[best]||0))best=v;}); merged[pid][c]=best; }); });
+  pids.forEach(function(pid){ pid=String(pid); merged[pid]={}; CLIENTS.forEach(function(c){ var best='-'; Object.values(sels).forEach(function(sel){var v=(sel[pid]&&sel[pid].impacts&&sel[pid].impacts[c])||'-';if((order[v]||0)>(order[best]||0))best=v;}); merged[pid][c]=best; }); });
   return merged;
 }
 
 function buildRows(projects,sels) {
-  var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return p.id;}),sels);
+  var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return String(p.id);}),sels);
   return projects.map(function(p){
-    var imp=merged[p.id]||{}; var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
-    var cols=[p.num,p.linkExpediente||'',p.fecha,hoy,'Argentina',p.jur,p.autor||'',p.sector,ca,mapTema(p.title,p.resumen),p.title.toUpperCase(),'El proyecto de ley tiene por objeto '+p.resumen,p.linkTexto||'',mapOrg(p.org),'','','',p.fecha].concat(CLIENTS.map(function(c){return imp[c]||'-';}));
+    var imp=merged[String(p.id)]||{}; var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
+    var cols=[p.num,p.linkExpediente||'',p.fecha,hoy,'Argentina',p.jur,p.autor||'',p.sector,ca,mapTema(p.title,p.resumen),(p.title||'').toUpperCase(),'El proyecto de ley tiene por objeto '+(p.resumen||''),p.linkTexto||'',mapOrg(p.org),'','','',p.fecha].concat(CLIENTS.map(function(c){return imp[c]||'-';}));
     return cols.join('\t');
   }).join('\n');
 }
 
 function copyConsolidado() {
-  var allPids=new Set(); Object.values(SELS).forEach(function(sel){Object.keys(sel).forEach(function(pid){allPids.add(parseInt(pid));});});
-  var sp=PROJECTS.filter(function(p){return allPids.has(p.id);}); if(!sp.length)return;
+  var selPids={}; Object.values(SELS).forEach(function(sel){Object.keys(sel).forEach(function(pid){selPids[String(pid)]=true;});});
+  var sp=PROJECTS.filter(function(p){return selPids[String(p.id)];}); if(!sp.length)return;
   var rows=buildRows(sp,SELS);
   var showOk=function(){var ok=document.getElementById('copy-ok');if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2200);}};
   try{navigator.clipboard.writeText(rows).then(showOk).catch(function(){fallbackCopy(rows,showOk);});}catch(e){fallbackCopy(rows,showOk);}
@@ -522,123 +610,152 @@ function fallbackCopy(text,cb) {
   document.body.removeChild(ta);
 }
 
+/* ============================================================
+   VISTA ADMIN (cargar proyectos) — por día
+   ============================================================ */
+var adminDate = '';
+
 async function renderAdmin(container) {
+  if (!adminDate) adminDate = isoToday();
   showOverlay('Cargando...');
-  try { PROJECTS = await dbGetAllProjects(); } catch(e) { PROJECTS = []; }
-  var todayProjects = PROJECTS.filter(function(p){ return p.fecha === isoToDisplay(isoToday()); });
+  try { PROJECTS = await dbGetProjects(adminDate); } catch(e) { PROJECTS = []; }
   hideOverlay();
+  var dayProjects = PROJECTS;
   var h='<div class="admin-body">';
-  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-clipboard-text"></i> Pegar contenido del Daily Legal Snippet</div>';
-  h+='<div class="admin-card-sub">Abri el .eml, selecciona todo (Ctrl+A), copia (Ctrl+C) y pegalo aca abajo.</div>';
-  h+='<div class="field-grid full"><div class="field"><label>Contenido del snippet</label><textarea id="snippet-text" style="min-height:180px;font-size:12px;font-family:monospace" placeholder="Pega aca el contenido del Daily Legal Snippet..."></textarea></div></div>';
-  h+='<div class="field-grid"><div class="field"><label>Fecha del snippet</label><input type="date" id="snippet-date" value="'+isoToday()+'"></div></div>';
-  h+='<div id="snippet-alert"></div>';
-  h+='<div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="processSnippetText()"><i class="ti ti-cpu"></i> Procesar con IA</button></div></div>';
+  h+='<div class="m-date" style="justify-content:flex-end;margin-bottom:12px"><label for="adm-date">Día a cargar</label><input type="date" id="adm-date" value="'+adminDate+'" onchange="adminChangeDate(this.value)"></div>';
+
+  // ---- Importar JSON (generado con Claude) ----
+  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-clipboard-text"></i> Importar proyectos (JSON)</div>';
+  h+='<div class="admin-card-sub">Pegá el newsletter en Claude con el prompt de abajo, copiá el JSON que devuelve y pegalo acá. Se cargan para el día seleccionado arriba.</div>';
+  h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn" onclick="copyPrompt()"><i class="ti ti-prompt"></i> Copiar prompt para Claude</button><span id="prompt-ok" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
+  h+='<div class="field-grid full"><div class="field"><label>JSON de proyectos</label><textarea id="json-text" style="min-height:160px;font-size:12px;font-family:monospace" placeholder=\'[{"num":"1234-D-2026","sector":"Tecnologia","jur":"Nacional",...}]\'></textarea></div></div>';
+  h+='<div id="json-alert"></div>';
+  h+='<div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="importJson()"><i class="ti ti-download"></i> Importar JSON</button></div></div>';
+
+  // ---- Alta manual ----
   h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-circle-plus"></i> Agregar proyecto manualmente</div>';
   h+='<div class="field-grid"><div class="field"><label>Numero *</label><input id="f-num" placeholder="ej. 1234-D-2026"></div>';
-  h+='<div class="field"><label>Fecha</label><input id="f-fecha" type="date" value="'+isoToday()+'"></div></div>';
-  h+='<div class="field-grid"><div class="field"><label>Sector *</label><select id="f-sector"><option value="">Selecciona</option>'+SECTORES.map(function(s){return'<option>'+s+'</option>';}).join('')+'</select></div>';
-  h+='<div class="field"><label>Jurisdiccion *</label><select id="f-jur"><option value="">Selecciona</option><option>Nacional</option><optgroup label="Provincial">'+PROVINCIAS.map(function(p){return'<option>'+p+'</option>';}).join('')+'</optgroup><option>Municipal</option></select></div></div>';
+  h+='<div class="field"><label>Fecha</label><input id="f-fecha" type="date" value="'+adminDate+'"></div></div>';
+  h+='<div class="field-grid"><div class="field"><label>Sector *</label><select id="f-sector"><option value="">Selecciona</option>'+SECTORES.map(function(s){return'<option>'+esc(s)+'</option>';}).join('')+'</select></div>';
+  h+='<div class="field"><label>Jurisdiccion *</label><select id="f-jur"><option value="">Selecciona</option><option>Nacional</option><optgroup label="Provincial">'+PROVINCIAS.map(function(p){return'<option>'+esc(p)+'</option>';}).join('')+'</optgroup><option>Municipal</option></select></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Organismo *</label><input id="f-org"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Autor/es</label><input id="f-autor"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Titulo *</label><input id="f-title"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Resumen (sin "tiene por objeto") *</label><textarea id="f-resumen"></textarea></div></div>';
   h+='<div class="field-grid"><div class="field"><label>Link expediente</label><input id="f-link-exp"></div><div class="field"><label>Link PDF</label><input id="f-link-pdf"></div></div>';
   h+='<div id="form-alert"></div><div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="addProject()"><i class="ti ti-plus"></i> Agregar</button></div></div>';
-  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos de hoy <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+todayProjects.length+'</span></div>';
-  h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar hoy</button></div><div id="proj-list">';
-  if(todayProjects.length){todayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+p.num+'</span><span class="pi-title">'+p.title+'</span><span class="pi-jur">'+p.jur+' - '+p.sector+'</span><button class="pi-del" onclick="deleteProject('+p.id+')"><i class="ti ti-trash"></i></button></div>';});}
-  else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados hoy.</div>';}
+
+  // ---- Lista del día ----
+  h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos del '+esc(isoToDisplay(adminDate))+' <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+dayProjects.length+'</span></div>';
+  h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar este día</button></div><div id="proj-list">';
+  if(dayProjects.length){dayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+esc(p.num)+'</span><span class="pi-title">'+esc(p.title)+'</span><span class="pi-jur">'+esc(p.jur+' - '+p.sector)+'</span><button class="pi-del" onclick="deleteProject(\''+String(p.id)+'\')"><i class="ti ti-trash"></i></button></div>';});}
+  else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados para este día.</div>';}
   h+='</div></div></div>'; container.innerHTML=h;
 }
 
+async function adminChangeDate(iso) { if(!iso)return; adminDate=iso; await renderAdmin(document.getElementById('app')); }
+
+function extractionPrompt() {
+  return 'Sos un asistente especializado en analisis de textos legislativos argentinos. Analiza el Daily Legal Snippet que te paso y extrae TODOS los proyectos de ley.\n\n'
+    + 'Para cada proyecto extrae estos campos:\n'
+    + '- num: numero de expediente (ej. 1234-D-2026)\n'
+    + '- sector: EXACTAMENTE uno de: ' + SECTORES.join(', ') + '\n'
+    + '- jur: EXACTAMENTE uno de: ' + JUR_ORDER.join(', ') + '\n'
+    + '- org: nombre del organismo\n'
+    + '- autor: autor/es\n'
+    + '- title: titulo descriptivo (max 150 caracteres)\n'
+    + '- resumen: objeto del proyecto, SIN "tiene por objeto" al inicio\n'
+    + '- linkExpediente: URL del expediente si aparece (si no, "")\n'
+    + '- linkTexto: URL del PDF si aparece (si no, "")\n'
+    + '- fecha: en formato DD/MM/YYYY\n\n'
+    + 'Respondé UNICAMENTE con un array JSON válido (un objeto por proyecto), sin markdown ni explicaciones.\n\n'
+    + 'TEXTO DEL SNIPPET:\n[PEGÁ ACÁ EL CONTENIDO DEL NEWSLETTER]';
+}
+
+function copyPrompt() {
+  var txt = extractionPrompt();
+  var ok=function(){var e=document.getElementById('prompt-ok');if(e){e.style.display='inline';setTimeout(function(){e.style.display='none';},2200);}};
+  try{navigator.clipboard.writeText(txt).then(ok).catch(function(){fallbackCopy(txt,ok);});}catch(e){fallbackCopy(txt,ok);}
+}
+
+function importJson() {
+  var alertEl=document.getElementById('json-alert');
+  var raw=(document.getElementById('json-text').value||'').trim();
+  if(!raw){alertEl.innerHTML='<div class="alert error">Pegá el JSON primero.</div>';return;}
+  raw=raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  var arr;
+  try { arr=JSON.parse(raw); } catch(e){ alertEl.innerHTML='<div class="alert error">El JSON no es válido: '+esc(e.message)+'</div>'; return; }
+  if(!Array.isArray(arr)){ if(arr&&Array.isArray(arr.proyectos))arr=arr.proyectos; else { alertEl.innerHTML='<div class="alert error">Esperaba un array JSON de proyectos.</div>'; return; } }
+  var clean=[], skipped=0;
+  arr.forEach(function(o){
+    if(!o||typeof o!=='object'){skipped++;return;}
+    var num=String(o.num||'').trim(), title=String(o.title||'').trim(), resumen=String(o.resumen||'').trim();
+    if(!num && !title){skipped++;return;}
+    clean.push({
+      id:newId(), num:num||'(sin número)', title:title||'(sin título)', resumen:resumen,
+      sector:canonSector(o.sector), jur:canonJur(o.jur),
+      org:String(o.org||'').trim(), autor:String(o.autor||'').trim(),
+      linkExpediente:String(o.linkExpediente||o.linkExp||'').trim(),
+      linkTexto:String(o.linkTexto||o.linkPdf||'').trim(),
+      fecha:String(o.fecha||isoToDisplay(adminDate)).trim()
+    });
+  });
+  if(!clean.length){ alertEl.innerHTML='<div class="alert error">No se pudo extraer ningún proyecto del JSON.</div>'; return; }
+  showOverlay('Importando...');
+  saveDay(adminDate, PROJECTS.concat(clean)).then(function(){
+    hideOverlay();
+    alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> '+clean.length+' proyecto(s) importados'+(skipped?(' ('+skipped+' descartados por datos incompletos)'):'')+' para el '+esc(isoToDisplay(adminDate))+'.</div>';
+    document.getElementById('json-text').value='';
+    setTimeout(function(){renderAdmin(document.getElementById('app'));},1400);
+  }).catch(function(e){ hideOverlay(); alertEl.innerHTML='<div class="alert error">Error al guardar: '+esc(e.message)+'</div>'; });
+}
+
+// Guarda la lista completa de UN día (helper con manejo de error real).
+async function saveDay(iso, list) { await dbSaveProjects(iso, list); PROJECTS = list; }
+
 async function addProject() {
-  var num=document.getElementById('f-num').value.trim(),fechaRaw=document.getElementById('f-fecha').value||isoToday(),sector=document.getElementById('f-sector').value,jur=document.getElementById('f-jur').value,org=document.getElementById('f-org').value.trim(),autor=document.getElementById('f-autor').value.trim(),title=document.getElementById('f-title').value.trim(),resumen=document.getElementById('f-resumen').value.trim(),linkExpediente=document.getElementById('f-link-exp').value.trim(),linkTexto=document.getElementById('f-link-pdf').value.trim();
+  var num=document.getElementById('f-num').value.trim(),fechaRaw=document.getElementById('f-fecha').value||adminDate,sector=document.getElementById('f-sector').value,jur=document.getElementById('f-jur').value,org=document.getElementById('f-org').value.trim(),autor=document.getElementById('f-autor').value.trim(),title=document.getElementById('f-title').value.trim(),resumen=document.getElementById('f-resumen').value.trim(),linkExpediente=document.getElementById('f-link-exp').value.trim(),linkTexto=document.getElementById('f-link-pdf').value.trim();
   var errs=[]; if(!num)errs.push('Numero');if(!sector)errs.push('Sector');if(!jur)errs.push('Jurisdiccion');if(!org)errs.push('Organismo');if(!title)errs.push('Titulo');if(!resumen)errs.push('Resumen');
   var alertEl=document.getElementById('form-alert');
   if(errs.length){alertEl.innerHTML='<div class="alert error">Completa: '+errs.join(', ')+'</div>';return;}
+  // El alta usa la fecha del formulario; si difiere del día en pantalla, cargamos esa fecha.
+  var targetIso = fechaRaw;
   showOverlay('Guardando...');
-  var p={id:Date.now(),num:num,sector:sector,jur:jur,org:org,autor:autor,title:title,resumen:resumen,linkExpediente:linkExpediente,linkTexto:linkTexto,fecha:isoToDisplay(fechaRaw)};
-  PROJECTS.push(p); await dbSaveProjects(fechaRaw,PROJECTS); hideOverlay();
-  alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> Proyecto agregado</div>';
-  setTimeout(function(){renderAdmin(document.getElementById('app'));},1200);
-}
-
-async function deleteProject(id) { if(!confirm('Eliminar?'))return; showOverlay('Eliminando...'); PROJECTS=PROJECTS.filter(function(p){return p.id!==id;}); await dbSaveProjects(isoToday(),PROJECTS); hideOverlay(); renderAdmin(document.getElementById('app')); }
-async function clearDayProjects() { if(!confirm('Eliminar todos los proyectos de hoy?'))return; showOverlay('Eliminando...'); try { await dbSaveProjects(isoToday(),[]); } catch(e){} PROJECTS = await dbGetAllProjects(); hideOverlay(); renderAdmin(document.getElementById('app')); }
-
-async function clearSpecificDay() {
-  var picker = document.getElementById('del-date-picker');
-  if (!picker || !picker.value) { alert('Selecciona una fecha primero.'); return; }
-  var iso = picker.value;
-  var display = isoToDisplay(iso);
-  if (!confirm('Eliminar todos los proyectos del ' + display + '?')) return;
-  showOverlay('Eliminando...');
-  try { await dbSaveProjects(iso, []); } catch(e) {}
-  PROJECTS = await dbGetAllProjects();
-  hideOverlay();
-  renderAdmin(document.getElementById('app'));
-}
-
-async function processSnippetText() {
-  var text = document.getElementById('snippet-text').value.trim();
-  var snippetDate = document.getElementById('snippet-date').value || isoToday();
-  var alertEl = document.getElementById('snippet-alert');
-  if (!text) { alertEl.innerHTML='<div class="alert error">Pega el contenido del snippet primero.</div>'; return; }
-  showOverlay('Procesando con IA...','Extrayendo proyectos del snippet');
   try {
-    var projects = await parseEmlWithAI(text, snippetDate);
-    if (!projects||!projects.length) { hideOverlay(); alertEl.innerHTML='<div class="alert error">No se encontraron proyectos.</div>'; return; }
-    var existing = await dbGetProjects(snippetDate);
-    var merged = existing.concat(projects.map(function(p){p.id=Date.now()+Math.random();return p;}));
-    await dbSaveProjects(snippetDate, merged);
-    PROJECTS = await dbGetAllProjects();
+    var list = (targetIso === adminDate) ? PROJECTS.slice() : await dbGetProjects(targetIso);
+    list.push({id:newId(),num:num,sector:canonSector(sector),jur:canonJur(jur),org:org,autor:autor,title:title,resumen:resumen,linkExpediente:linkExpediente,linkTexto:linkTexto,fecha:isoToDisplay(targetIso)});
+    await dbSaveProjects(targetIso, list);
+    if (targetIso === adminDate) PROJECTS = list;
     hideOverlay();
-    alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> '+projects.length+' proyectos cargados para el '+isoToDisplay(snippetDate)+'</div>';
-    document.getElementById('snippet-text').value='';
-    setTimeout(function(){renderAdmin(document.getElementById('app'));},1500);
-  } catch(err) { hideOverlay(); alertEl.innerHTML='<div class="alert error">Error: '+err.message+'</div>'; }
+    alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> Proyecto agregado para el '+esc(isoToDisplay(targetIso))+'</div>';
+    if (targetIso !== adminDate) adminDate = targetIso;
+    setTimeout(function(){renderAdmin(document.getElementById('app'));},1200);
+  } catch(e) { hideOverlay(); alertEl.innerHTML='<div class="alert error">Error: '+esc(e.message)+'</div>'; }
 }
 
-async function handleEmlFile(file) {
-  if(!file)return;
-  var alertEl=document.getElementById('eml-alert');
-  alertEl.innerHTML='<div class="alert info">Leyendo archivo...</div>';
-  try {
-    var text=await file.text();
-    var plain='';
-    var idx=text.indexOf('Content-Type: text/plain');
-    if(idx>=0){var start=text.indexOf('\n\n',idx);if(start>=0){var end=text.indexOf('\n--',start+2);var chunk=end>=0?text.substring(start+2,end):text.substring(start+2);chunk=chunk.replace(/\s/g,'');try{plain=decodeURIComponent(escape(atob(chunk)));}catch(e){plain=chunk;}}}
-    if(!plain)plain=text;
-    var dm=null;var fn=file.name.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/);if(fn)dm=fn;
-    if(!dm){var subj=text.match(/Subject:[^\n]*/);if(subj)dm=subj[0].match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/);}
-    var snippetDate=isoToday();
-    if(dm)snippetDate=dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
-    showOverlay('Procesando con IA...','Extrayendo proyectos del snippet');
-    var projects=await parseEmlWithAI(plain,snippetDate);
-    if(!projects||!projects.length){hideOverlay();alertEl.innerHTML='<div class="alert error">No se encontraron proyectos.</div>';return;}
-    var existing=await dbGetProjects(snippetDate);
-    var merged=existing.concat(projects.map(function(p){p.id=Date.now()+Math.random();return p;}));
-    await dbSaveProjects(snippetDate,merged);PROJECTS=merged;
-    hideOverlay();alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> '+projects.length+' proyectos cargados para el '+isoToDisplay(snippetDate)+'</div>';
-    document.getElementById('eml-input').value='';
-    setTimeout(function(){renderAdmin(document.getElementById('app'));},1500);
-  } catch(err){hideOverlay();alertEl.innerHTML='<div class="alert error">Error: '+err.message+'</div>';}
+async function deleteProject(id) {
+  if(!confirm('Eliminar este proyecto?'))return;
+  id=String(id);
+  showOverlay('Eliminando...');
+  try { var list=PROJECTS.filter(function(p){return String(p.id)!==id;}); await dbSaveProjects(adminDate,list); PROJECTS=list; }
+  catch(e){ hideOverlay(); alert('Error: '+e.message); return; }
+  hideOverlay(); renderAdmin(document.getElementById('app'));
 }
 
-async function parseEmlWithAI(text, snippetDate) {
-  var dd=isoToDisplay(snippetDate);
-  var prompt='Sos un asistente especializado en analisis de textos legislativos argentinos. Analiza el siguiente Daily Legal Snippet y extrae TODOS los proyectos de ley.\n\nPara cada proyecto extrae:\n- num: numero de expediente\n- sector: uno de: Coyuntura general, Consumo masivo, Medios de pago, Tecnologia, Automotriz, Agroindustria, Petroquimicos, Mineria, Turismo, Salud, Ambiente\n- jur: exactamente uno de: Nacional, CABA, Buenos Aires, Catamarca, Chaco, Chubut, Cordoba, Corrientes, Entre Rios, Formosa, Jujuy, La Pampa, La Rioja, Mendoza, Misiones, Neuquen, Rio Negro, Salta, San Juan, San Luis, Santa Cruz, Santa Fe, Santiago del Estero, Tierra del Fuego, Tucuman, Municipal\n- org: nombre del organismo\n- autor: autor/es\n- title: titulo descriptivo (max 150 chars)\n- resumen: objeto SIN "tiene por objeto" al inicio\n- linkExpediente: URL si aparece\n- linkTexto: URL PDF si aparece\n- fecha: DD/MM/YYYY (default: '+dd+')\n\nResponde UNICAMENTE con JSON array valido, sin markdown ni backticks.\n\nTEXTO:\n'+text.substring(0,8000);
-  var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-  if(!resp.ok)throw new Error('API '+resp.status);
-  var data=await resp.json();
-  var raw=data.content.map(function(b){return b.text||'';}).join('').trim().replace(/^```json|^```|```$/g,'').trim();
-  return JSON.parse(raw);
+async function clearDayProjects() {
+  if(!confirm('Eliminar TODOS los proyectos del '+isoToDisplay(adminDate)+'?'))return;
+  showOverlay('Eliminando...');
+  try { await dbSaveProjects(adminDate,[]); PROJECTS=[]; } catch(e){ hideOverlay(); alert('Error: '+e.message); return; }
+  hideOverlay(); renderAdmin(document.getElementById('app'));
 }
 
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
 function init() {
   document.getElementById('nav-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  buildNav(); renderLogin();
+  buildNav();
+  if (gatePassed()) renderLogin(); else renderGate();
 }
 init();
 </script>
