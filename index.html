@@ -12,8 +12,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav{display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.25rem;height:48px}
 .nav-logo{font-size:15px;font-weight:600;margin-right:20px;display:flex;align-items:center;gap:6px}
 .nav-logo span{color:var(--blue)}
-.nav-tab{display:flex;align-items:center;gap:5px;padding:0 14px;height:48px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
-.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:500}
+#nav-tabs{display:flex;align-items:center;height:48px}
+.nav-tab{display:flex;align-items:center;gap:6px;padding:0 14px;height:48px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;opacity:.5;transition:opacity .15s}
+.nav-tab:hover{opacity:.85}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600;opacity:1}
+.step-n{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--border);color:var(--text2);font-size:10px;font-weight:700}
+.nav-tab.active .step-n{background:var(--blue);color:#fff}
+.nav-chev{display:flex;align-items:center;color:var(--text3);opacity:.4;font-size:15px;padding:0 1px}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px}
 .nav-fecha{font-size:12px;color:var(--text3);text-transform:capitalize}
 .nav-user{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);font-weight:500}
@@ -290,10 +295,17 @@ function buildNav() {
   var right = document.getElementById('nav-right');
   if (!currentUser) { tabs.innerHTML = ''; if (right) right.innerHTML = navFecha(); return; }
   var isAdmin = currentUser === 'Camila (admin)';
-  var h = '<div class="nav-tab active" id="tab-mgr" onclick="switchTab(\'mgr\')"><i class="ti ti-layout-list"></i> Selección</div>';
+  var h;
   if (isAdmin) {
-    h += '<div class="nav-tab" id="tab-consolidado" onclick="switchTab(\'consolidado\')"><i class="ti ti-table"></i> Consolidado</div>';
-    h += '<div class="nav-tab" id="tab-adm" onclick="switchTab(\'adm\')"><i class="ti ti-settings"></i> Cargar proyectos</div>';
+    // Secuencia temporal del flujo admin: cargar -> revisar -> consolidar.
+    var steps = [['adm','Cargar proyectos'],['mgr','Proyectos cargados'],['consolidado','Consolidado']];
+    h = '';
+    steps.forEach(function(s, i){
+      if (i) h += '<span class="nav-chev"><i class="ti ti-chevron-right"></i></span>';
+      h += '<div class="nav-tab'+(s[0]==='adm'?' active':'')+'" id="tab-'+s[0]+'" onclick="switchTab(\''+s[0]+'\')"><span class="step-n">'+(i+1)+'</span> '+s[1]+'</div>';
+    });
+  } else {
+    h = '<div class="nav-tab active" id="tab-mgr" onclick="switchTab(\'mgr\')"><i class="ti ti-layout-list"></i> Proyectos cargados</div>';
   }
   tabs.innerHTML = h;
   if (right) right.innerHTML = navFecha()
@@ -348,7 +360,7 @@ async function login(name) {
     SELS = await dbGetSelections(viewDate);
   } catch(e) { hideOverlay(); alert('No se pudieron cargar los datos: ' + e.message); return; }
   loadLocalFromSels();
-  hideOverlay(); buildNav(); switchTab('mgr');
+  hideOverlay(); buildNav(); switchTab(currentUser === 'Camila (admin)' ? 'adm' : 'mgr');
 }
 function loadLocalFromSels() {
   localSel = {}; localImp = {};
