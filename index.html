@@ -532,7 +532,12 @@ function login(name) {
 // Carga lo que YA calificó el manager (queda "marcado", colapsado por defecto).
 function loadLocalFromSels() {
   localSel = {}; localImp = {}; expanded = {};
-  if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){ localSel[pid] = true; localImp[pid] = SELS[currentUser][pid].impacts || {}; }); }
+  if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){
+    var imp = SELS[currentUser][pid].impacts || {};
+    localImp[pid] = imp;
+    // "Rotulado" solo si tiene al menos un impacto real (≠ "-")
+    if (CLIENTS.some(function(c){ return imp[c] && imp[c]!=='-'; })) localSel[pid] = true;
+  }); }
 }
 function logout() { currentUser=null; localSel={}; localImp={}; PROJECTS=[]; SELS={}; buildNav(); renderLogin(); }
 function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr')renderManager(app); else if(tab==='consolidado')renderConsolidado(app); else if(tab==='adm')renderAdmin(app); }
