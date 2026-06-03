@@ -73,6 +73,8 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .toolbar label{font-size:13px;color:var(--text2)}
 .toolbar .tb-date{font-size:13px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;color:var(--text);background:var(--surface);cursor:pointer}
 .tb-sep{width:1px;align-self:stretch;background:var(--border);margin:2px 6px}
+.tb-clear{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer}
+.tb-clear:hover{border-color:var(--accent);color:var(--accent)}
 .tb-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
 .hoy-nuevos{color:var(--accent);font-weight:700;font-size:15px;margin-left:auto}
 .tb-toggle input{display:none}
@@ -308,7 +310,9 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, readSet = {}, onlyToday = false, saveTimer = null;
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, readSet = {}, onlyToday = false, filterDate = '', saveTimer = null;
+function setRepDate(v) { filterDate = v || ''; renderList(); }
+function clearRepDate() { filterDate = ''; var el=document.getElementById('rep-date'); if(el) el.value=''; renderList(); }
 // "Leído" por usuario (qué proyectos abrió), persistido en el navegador.
 function loadReadSet() { readSet = {}; try { (JSON.parse(localStorage.getItem('sd_read_'+(currentUser||''))||'[]')).forEach(function(id){ readSet[String(id)]=1; }); } catch(e) {} }
 function markRead(id) { id=String(id); if(readSet[id]) return; readSet[id]=1; try { localStorage.setItem('sd_read_'+(currentUser||''), JSON.stringify(Object.keys(readSet))); } catch(e) {} }
@@ -475,7 +479,7 @@ function renderLogin() {
 function teamLogout() { setGatePassed(false); renderGate(); }
 
 function login(name) {
-  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {};
+  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {}; filterDate = '';
   // Cada vista (mgr/adm/consolidado) carga sus propios datos al renderizarse.
   buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
 }
@@ -497,6 +501,9 @@ async function renderManager(container) {
   loadLocalFromSels(); loadReadSet();
   hideOverlay();
   var h = '<div class="toolbar">';
+  h += '<label for="rep-date">Reporte</label><input type="date" class="tb-date" id="rep-date" value="' + filterDate + '" max="' + isoToday() + '" onchange="setRepDate(this.value)" title="Mostrar solo los proyectos reportados ese día">';
+  h += '<button class="tb-clear" onclick="clearRepDate()" title="Ver todas las fechas">Todas</button>';
+  h += '<span class="tb-sep"></span>';
   h += '<label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
   h += '<label>Jurisdicción</label><div class="dd-wrap"><button class="dd-btn" id="dd-jur-btn" onclick="toggleMenu(\'jur\',event)">Todas</button>';
@@ -676,7 +683,7 @@ function setImp(pid,client,val) {
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
   saveFilterPrefs();
-  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0 && (!onlyToday || loadedToday(p));});
+  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0 && (!onlyToday || loadedToday(p)) && (!filterDate || String(p._d)===filterDate);});
   var list = document.getElementById('list'); if (!list) return;
   if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>Todavía no hay proyectos cargados.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
