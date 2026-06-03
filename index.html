@@ -61,6 +61,13 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .toolbar label{font-size:13px;color:var(--text2)}
 .toolbar .tb-date{font-size:13px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;color:var(--text);background:var(--surface);cursor:pointer}
 .tb-sep{width:1px;align-self:stretch;background:var(--border);margin:2px 6px}
+.tb-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none}
+.tb-toggle input{display:none}
+.tb-switch{width:34px;height:18px;border-radius:20px;background:var(--border);position:relative;transition:background .15s;flex-shrink:0}
+.tb-switch::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tb-toggle input:checked + .tb-switch{background:var(--accent)}
+.tb-toggle input:checked + .tb-switch::after{transform:translateX(16px)}
+.tb-toggle input:checked ~ span:last-child{color:var(--accent);font-weight:600}
 .dd-wrap{position:relative}
 .dd-btn{font-size:13px;height:30px;padding:0 28px 0 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;min-width:140px;text-align:left;position:relative}
 .dd-btn::after{content:'';position:absolute;right:10px;top:50%;transform:translateY(-50%);border:4px solid transparent;border-top-color:var(--text3);margin-top:2px}
@@ -264,7 +271,8 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {};
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, onlyToday = false;
+function setOnlyToday(v) { onlyToday = !!v; renderList(); }
 var _idSeq = 0;
 
 /* ============================================================
@@ -442,7 +450,9 @@ function renderManager(container) {
   h += '<div class="dd-group-label">Provincial</div><div class="dd-item" onclick="toggleAllProv(event)"><input type="checkbox" id="chk-all-prov" checked> Todas las provincias</div>';
   h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
-  h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div></div>';
+  h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
+  h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo los de hoy</span></label>';
+  h += '</div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para guardar</span>';
   h += '<button class="btn primary" onclick="submitSelection()"><i class="ti ti-device-floppy"></i> Guardar selección</button></div></div>';
@@ -462,7 +472,7 @@ function filterPrefsKey() { return 'sd_filters_' + (currentUser || ''); }
 function saveFilterPrefs() {
   try {
     if (!document.querySelector('.sec-chk')) return;
-    localStorage.setItem(filterPrefsKey(), JSON.stringify({sectors: getActiveSectors(), jurs: getActiveJurs()}));
+    localStorage.setItem(filterPrefsKey(), JSON.stringify({sectors: getActiveSectors(), jurs: getActiveJurs(), today: onlyToday}));
   } catch(e) {}
 }
 function applyFilterPrefs() {
@@ -472,6 +482,8 @@ function applyFilterPrefs() {
   if (!p) return;
   if (Array.isArray(p.sectors)) document.querySelectorAll('.sec-chk').forEach(function(c){ c.checked = p.sectors.indexOf(c.value) >= 0; });
   if (Array.isArray(p.jurs)) document.querySelectorAll('.jur-chk').forEach(function(c){ c.checked = p.jurs.indexOf(c.value) >= 0; });
+  onlyToday = !!p.today;
+  var ot = document.getElementById('only-today'); if (ot) ot.checked = onlyToday;
   updateSecBtn(); updateJurBtn();
 }
 
@@ -600,7 +612,7 @@ function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][c
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
   saveFilterPrefs();
-  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0;});
+  var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0 && (!onlyToday || loadedToday(p));});
   var list = document.getElementById('list'); if (!list) return;
   if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados para este día.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
