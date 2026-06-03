@@ -109,8 +109,19 @@ Notas:
 ## Modelo de datos (Supabase)
 
 - **`projects`** `(id, date, data)`: una fila por día. `data` = array JSON de proyectos de ese día.
-- **`selections`** `(id, date, manager, data, updated_at)`: una fila por (día, manager). `data` =
-  `{ "<idProyecto>": { impacts: { "<cliente>": "Alto|Medio|Bajo|N/A|-" }, ts } }`.
+- **`selections`** `(id, date, manager, data, updated_at)`: **una fila por manager** (date-agnóstica;
+  se usa un `date` centinela fijo `SEL_DATE='2000-01-01'`). `data` =
+  `{ "<idProyecto>": { impacts: { "<cliente>": "Alto|Medio|Bajo|N/A|-" }, ts } }`. Al guardar se borra
+  cualquier fila previa del manager y se reescribe una sola (`dbSaveSelectionAll`); al leer se
+  fusionan todas las filas por manager (`dbGetAllSelections`) — esto migra solo los datos viejos que
+  estaban partidos por día.
+
+**Vista del manager = histórico completo.** Muestra TODOS los proyectos de todas las fechas
+(agrupados por día). El tag **NUEVO** y el toggle **"Solo reportados hoy"** distinguen lo del día.
+Las tarjetas arrancan **colapsadas**; las que el manager ya calificó quedan marcadas (check + borde
+verde) pero colapsadas. Ojo: "expandido" (`expanded`, UI) está **desacoplado** de "calificado"
+(`localSel`, tiene impacto). El **Consolidado** sí es por día: filtra el histórico de selecciones a
+los proyectos de la fecha elegida (para exportar la tanda del día al master tracker).
 
 Campos de cada proyecto: `id, num, sector, jur, tema, org, autor, title, resumen, linkExpediente,
 linkTexto, fecha`. El `id` arranca con el timestamp (ms) de cuándo se cargó — de ahí sale el
