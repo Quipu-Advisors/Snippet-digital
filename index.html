@@ -131,6 +131,10 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .footer{padding:1rem 1.25rem;border-top:1px solid var(--border);background:var(--surface);position:sticky;bottom:0}
 .footer-top{display:flex;align-items:center;justify-content:space-between}
 .footer-info{font-size:13px;color:var(--text2)}
+.save-status{font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:5px}
+.save-status.ok{color:var(--green)}
+.save-status.err{color:var(--red)}
+.spin-sm{display:inline-block;animation:spin 1s linear infinite}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;font-weight:500}
 .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
 .btn.danger{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
@@ -272,7 +276,7 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, onlyToday = false;
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, onlyToday = false, saveTimer = null;
 function setOnlyToday(v) { onlyToday = !!v; renderList(); }
 var _idSeq = 0;
 
@@ -456,8 +460,8 @@ function renderManager(container) {
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
   h += '<div class="list" id="list"></div>';
-  h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para guardar</span>';
-  h += '<button class="btn primary" onclick="submitSelection()"><i class="ti ti-device-floppy"></i> Guardar selección</button></div></div>';
+  h += '<div class="footer"><div class="footer-top"><span class="footer-info" id="finfo"></span>';
+  h += '<span class="save-status" id="save-status"><i class="ti ti-cloud"></i> Se guarda automáticamente</span></div></div>';
   container.innerHTML = h;
   buildFilters(); applyFilterPrefs(); renderList(); updateFinfo(); updateTodayLegend();
 }
@@ -608,7 +612,7 @@ function clientLock(pid, client) {
 }
 
 function colorSel(el) { el.className = 'imp-select '+(el.value==='Alto'?'alto':el.value==='Medio'?'medio':el.value==='Bajo'?'bajo':''); }
-function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][client]=val; }
+function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][client]=val; scheduleSave(); }
 
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
@@ -660,8 +664,8 @@ function renderList() {
   list.innerHTML = h;
 }
 
-function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); }
-function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) listo(s) para guardar':'Selecciona proyectos para guardar'; }
+function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); scheduleSave(); }
+function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) marcado(s)':'Marcá proyectos y cargá su impacto'; }
 function updateTodayLegend() {
   var el=document.getElementById('today-legend'); if(!el) return;
   var n=PROJECTS.filter(loadedToday).length;
@@ -679,13 +683,20 @@ async function changeDate(iso) {
   renderList(); updateFinfo(); updateTodayLegend();
 }
 
-async function submitSelection() {
-  var n=Object.keys(localSel).length; var s=document.getElementById('submit-status');
-  if(!n){if(s)s.innerHTML='<div class="alert info">Selecciona al menos un proyecto.</div>';return;}
-  showOverlay('Guardando seleccion...');
-  var sd={}; Object.keys(localSel).forEach(function(pid){sd[pid]={impacts:localImp[pid]||{},ts:Date.now()};});
-  try { await dbSaveSelection(viewDate,currentUser,sd); SELS[currentUser]=sd; hideOverlay(); if(s)s.innerHTML='<div class="alert success"><i class="ti ti-check"></i> Selección guardada — '+n+' proyecto(s).</div>'; }
-  catch(e) { hideOverlay(); if(s)s.innerHTML='<div class="alert error">Error: '+esc(e.message)+'</div>'; }
+// Guardado automático (con debounce) cada vez que el manager cambia algo.
+function setSaveStatus(state) {
+  var el=document.getElementById('save-status'); if(!el) return;
+  if(state==='saving') el.innerHTML='<i class="ti ti-loader-2 spin-sm"></i> Guardando…';
+  else if(state==='saved') el.innerHTML='<i class="ti ti-cloud-check"></i> Guardado';
+  else if(state==='error') el.innerHTML='<i class="ti ti-alert-triangle"></i> Error al guardar';
+  else el.innerHTML='<i class="ti ti-cloud"></i> Se guarda automáticamente';
+  el.className='save-status'+(state==='error'?' err':(state==='saved'?' ok':''));
+}
+function scheduleSave() { setSaveStatus('saving'); clearTimeout(saveTimer); saveTimer=setTimeout(commitSave, 600); }
+function commitSave() {
+  var sd={}; Object.keys(localSel).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, ts:Date.now()}; });
+  SELS[currentUser]=sd;
+  dbSaveSelection(viewDate,currentUser,sd).then(function(){ setSaveStatus('saved'); }).catch(function(){ setSaveStatus('error'); });
 }
 
 /* ============================================================
