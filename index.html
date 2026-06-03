@@ -672,8 +672,11 @@ function renderList() {
   if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>Todavía no hay proyectos cargados.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
 
+  // Agrupar por la fecha del REPORTE INTERNO (día del snippet que los trajo = _d), no por
+  // la fecha de presentación del proyecto.
+  function repDate(p){ return p._d ? isoToDisplay(p._d) : (p.fecha || 'Sin fecha'); }
   var groups = {}, groupOrder = [];
-  f.forEach(function(p) { var fecha = p.fecha || 'Sin fecha'; if (!groups[fecha]) { groups[fecha] = []; groupOrder.push(fecha); } groups[fecha].push(p); });
+  f.forEach(function(p) { var fecha = repDate(p); if (!groups[fecha]) { groups[fecha] = []; groupOrder.push(fecha); } groups[fecha].push(p); });
   groupOrder.sort(function(a,b){ return fechaSortKey(b).localeCompare(fechaSortKey(a)); });
 
   var DIAS_ES = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
