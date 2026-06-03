@@ -61,8 +61,9 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .toolbar label{font-size:13px;color:var(--text2)}
 .toolbar .tb-date{font-size:13px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;color:var(--text);background:var(--surface);cursor:pointer}
 .tb-sep{width:1px;align-self:stretch;background:var(--border);margin:2px 6px}
-.tb-legend{flex:1;text-align:center;font-size:13px;font-weight:700;color:var(--accent);padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
+.tb-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
+.today-legend{max-width:1100px;width:100%;margin:0 auto;padding:14px 2rem 0;font-size:13px;font-weight:600;color:var(--blue);display:flex;align-items:center;gap:6px}
+.today-legend:empty{display:none}
 .tb-toggle input{display:none}
 .tb-switch{width:34px;height:18px;border-radius:20px;background:var(--border);position:relative;transition:background .15s;flex-shrink:0}
 .tb-switch::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -114,9 +115,9 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .imp-item{display:flex;align-items:center;gap:8px;min-width:0}
 .imp-label{width:116px;flex:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .imp-select{font-size:11px;height:24px;padding:0 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);flex-shrink:0;min-width:62px}
-.imp-select.alto{background:var(--green-bg);color:var(--green);border-color:var(--green-border);font-weight:600}
+.imp-select.alto{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-weight:600}
 .imp-select.medio{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border);font-weight:600}
-.imp-select.bajo{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-weight:600}
+.imp-select.bajo{background:var(--green-bg);color:var(--green);border-color:var(--green-border);font-weight:600}
 .imp-locked{display:inline-flex;align-items:center;gap:5px;flex:1;min-width:0}
 .imp-locked-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0}
 .imp-locked-name{font-size:10px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -178,9 +179,9 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .mgr-ptitle{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mgr-imps{display:flex;gap:4px;flex-wrap:wrap}
 .mgr-imp{font-size:10px;padding:1px 5px;border-radius:var(--radius)}
-.mgr-imp.alto{background:var(--green-bg);color:var(--green)}
+.mgr-imp.alto{background:var(--red-bg);color:var(--red)}
 .mgr-imp.medio{background:var(--orange-bg);color:var(--orange)}
-.mgr-imp.bajo{background:var(--red-bg);color:var(--red)}
+.mgr-imp.bajo{background:var(--green-bg);color:var(--green)}
 .empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
 .cprev{background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);padding:8px 12px;font-size:11px;font-family:monospace;color:var(--text2);white-space:pre;overflow-x:auto;line-height:1.8;max-height:200px;overflow-y:auto;margin-top:10px}
 </style>
@@ -456,9 +457,9 @@ function renderManager(container) {
   h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
-  h += '<div class="tb-legend" id="today-legend"></div>';
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
+  h += '<div class="today-legend" id="today-legend"></div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div class="footer-top"><span class="footer-info" id="finfo"></span>';
   h += '<span class="save-status" id="save-status"><i class="ti ti-cloud"></i> Se guarda automáticamente</span></div></div>';
@@ -524,7 +525,7 @@ function getOtherImpacts(pid) {
 function impactBadgeStyle(level) {
   if (level === 'Alto') return 'background:#C0392B;color:#fff;';
   if (level === 'Medio') return 'background:#E67E22;color:#fff;';
-  if (level === 'Bajo') return 'background:#F9E4A0;color:#7A5C00;';
+  if (level === 'Bajo') return 'background:#3B6D11;color:#fff;';
   return 'background:#eee;color:#555;';
 }
 
@@ -669,7 +670,7 @@ function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.get
 function updateTodayLegend() {
   var el=document.getElementById('today-legend'); if(!el) return;
   var n=PROJECTS.filter(loadedToday).length;
-  el.textContent = n>0 ? ('Hoy reportamos '+n+' proyecto'+(n!==1?'s':'')+' nuevo'+(n!==1?'s':'')) : '';
+  el.innerHTML = n>0 ? ('<i class="ti ti-sparkles"></i> Hoy reportamos '+n+' proyecto'+(n!==1?'s':'')+' nuevo'+(n!==1?'s':'')) : '';
 }
 
 async function changeDate(iso) {
