@@ -70,18 +70,23 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .dd-item.sub{padding-left:28px;font-size:12px;color:var(--text2)}
 .dd-divider{border:none;border-top:1px solid var(--border-light);margin:3px 0}
 .dd-group-label{padding:6px 12px 2px;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.list{padding:1rem 1.25rem;display:flex;flex-direction:column;gap:8px}
-.group-sector-title{font-size:15px;font-weight:500;padding:10px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.list{padding:1.75rem 2rem;display:flex;flex-direction:column;gap:10px;max-width:1100px;margin:0 auto;width:100%}
+.group-sector-title{font-size:13px;font-weight:700;color:var(--text);padding:14px 0 8px;margin-bottom:6px}
 .group-jur-title{font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.14em;text-transform:uppercase;padding:6px 0 4px;margin-top:4px}
-.group-jur-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
-.card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;background:var(--surface);cursor:pointer;display:flex;gap:12px;align-items:flex-start}
-.card.sel{border:1.5px solid var(--blue);background:var(--blue-bg)}
-.card.sel .ctitle{color:var(--blue-dark)}
-.card-row{display:flex;gap:10px;align-items:flex-start}
-.chk{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.group-jur-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.card{border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;background:var(--surface);cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:border-color .12s,box-shadow .12s}
+.card:not(.sel):hover{border-color:var(--accent-border);box-shadow:0 1px 6px rgba(57,82,121,.06)}
+.card.sel{border:1.5px solid var(--blue);background:var(--surface);box-shadow:0 2px 10px rgba(57,82,121,.08)}
+.card.sel .ctitle{color:var(--blue)}
+.chk{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .card.sel .chk{background:var(--blue);border-color:var(--blue)}
 .cinfo{flex:1;min-width:0}
-.ctitle{font-size:17px;font-weight:600;margin-bottom:6px;line-height:1.35}
+.ctitle{font-size:16px;font-weight:600;line-height:1.4}
+.card.sel .ctitle{margin-bottom:8px}
+.cmeta-min{display:flex;align-items:center;gap:10px;margin-top:8px}
+.others-mark{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--accent)}
+.card-chev{margin-left:auto;align-self:center;color:var(--text3);opacity:.4;font-size:18px;flex-shrink:0;transition:opacity .12s}
+.card:not(.sel):hover .card-chev{opacity:.85}
 .cmeta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
 .pill{font-size:11px;padding:2px 7px;border-radius:var(--radius);font-weight:500}
 .p-num{background:#F1EFE8;color:#5F5E5A;font-weight:600}
@@ -462,28 +467,35 @@ function cardHTML(p) {
   var isSel = !!localSel[id];
   if (isSel) initImp(id);
   var tema = mapTema(p.title, p.resumen);
-  var rf = 'El proyecto de ley tiene por objeto ' + (p.resumen||'');
-  var rs = isSel ? rf : (rf.length>160 ? rf.substring(0,160)+'...' : rf);
   var otherImps = getOtherImpacts(id);
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
 
   var h = '<div class="card'+(isSel?' sel':'')+'" onclick="toggleCard(\''+id+'\',event)">';
-  // Checkbox de selección
   h += '<div class="chk">'+(isSel?'<i class="ti ti-check" style="font-size:12px;color:#fff"></i>':'')+'</div>';
-  // MITAD IZQUIERDA: información del proyecto
+
+  // MITAD IZQUIERDA: info del proyecto
   h += '<div class="cinfo">';
   h += '<div class="ctitle">'+esc(p.title)+'</div>';
-  h += '<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
-  h += '<span class="pill p-num">'+esc(p.num)+'</span><span class="pill p-tema">'+esc(tema)+'</span>';
-  h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
-  if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
-  if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
-  h += '</div>';
-  h += '<div class="cresumen">'+esc(rs)+'</div>';
-  h += '</div>';
-  // MITAD DERECHA: impacto (dropdowns propios + lo que cargaron otros managers)
-  if (isSel || otherImps.length) {
-    h += '<div class="cimpact'+(isSel?' wide':'')+'" onclick="event.stopPropagation()">';
+  if (isSel) {
+    // EXPANDIDA: todo el detalle
+    h += '<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
+    h += '<span class="pill p-num">'+esc(p.num)+'</span><span class="pill p-tema">'+esc(tema)+'</span>';
+    h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+    if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
+    if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
+    h += '</div>';
+    h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
+  } else {
+    // COLAPSADA: lo mínimo para escanear
+    h += '<div class="cmeta-min"><span class="pill p-tema">'+esc(tema)+'</span>';
+    if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
+    h += '</div>';
+  }
+  h += '</div>'; // cinfo
+
+  // MITAD DERECHA: solo al expandir (impacto). Colapsada: chevron sutil.
+  if (isSel) {
+    h += '<div class="cimpact wide" onclick="event.stopPropagation()">';
     if (otherImps.length) {
       h += '<div class="other-imps"><div class="other-imps-t">Impactos de otros</div>';
       otherImps.forEach(function(x) {
@@ -492,8 +504,10 @@ function cardHTML(p) {
       });
       h += '</div>';
     }
-    if (isSel) h += renderImp(id);
+    h += renderImp(id);
     h += '</div>';
+  } else {
+    h += '<i class="ti ti-chevron-down card-chev"></i>';
   }
   h += '</div>';
   return h;
