@@ -451,7 +451,7 @@ function renderManager(container) {
   h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
-  h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo los de hoy</span></label>';
+  h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para guardar</span>';
@@ -651,7 +651,7 @@ function renderList() {
         JUR_FULL.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+esc(jur)+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
       });
     } else {
-      h += ps.map(cardHTML).join('');
+      h += '<div class="group-jur-cards">'+ps.map(cardHTML).join('')+'</div>';
     }
     h += '</div>';
   });
