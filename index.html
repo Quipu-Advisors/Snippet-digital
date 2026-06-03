@@ -155,7 +155,11 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .mgr-count{font-size:11px;color:var(--text3)}
 .mgr-clear{padding:3px 8px;font-size:11px;border-radius:var(--radius);border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);cursor:pointer}
 .mgr-projs{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
-.mgr-proj{display:flex;align-items:center;gap:8px;font-size:12px}
+.mgr-proj{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:2px 0}
+.mgr-proj:hover{color:var(--blue)}
+.mgr-proj-chev{color:var(--text3);font-size:14px;flex-shrink:0;transition:transform .12s}
+.cons-detail{display:none;margin:6px 0 4px 22px;padding:10px 14px;border:0.5px solid var(--border);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;background:var(--surface)}
+.cons-detail.open{display:block}
 .mgr-pnum{background:var(--blue-bg);color:var(--blue-dark);font-size:11px;padding:2px 6px;border-radius:var(--radius);font-weight:500;white-space:nowrap}
 .mgr-ptitle{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mgr-imps{display:flex;gap:4px;flex-wrap:wrap}
@@ -690,8 +694,34 @@ function managerCard(name,sel,projects) {
   var h='<div class="mgr-card"><div class="mgr-hdr"><i class="ti ti-user" style="color:var(--blue);font-size:16px"></i>';
   h+='<span class="mgr-name">'+esc(name)+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
   h+='<button class="mgr-clear" onclick="clearMgrSel(\''+name.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i></button></div><div class="mgr-projs">';
-  ps.forEach(function(p){ var imp=(sel[String(p.id)]&&sel[String(p.id)].impacts)||{}; var nd=Object.entries(imp).filter(function(x){return x[1]&&x[1]!=='-';}); h+='<div class="mgr-proj"><span class="mgr-pnum">'+esc(p.num)+'</span><span class="mgr-ptitle">'+esc(p.title)+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+esc(String(x[1]).toLowerCase())+'">'+esc(x[0]+': '+x[1])+'</span>';}).join('')+'</div></div>'; });
+  ps.forEach(function(p){
+    var imp=(sel[String(p.id)]&&sel[String(p.id)].impacts)||{};
+    var nd=Object.entries(imp).filter(function(x){return x[1]&&x[1]!=='-';});
+    h+='<div class="mgr-proj-wrap">';
+    h+='<div class="mgr-proj" onclick="toggleConsDetail(this)"><i class="ti ti-chevron-right mgr-proj-chev"></i><span class="mgr-pnum">'+esc(p.num)+'</span><span class="mgr-ptitle">'+esc(p.title)+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+esc(String(x[1]).toLowerCase())+'">'+esc(x[0]+': '+x[1])+'</span>';}).join('')+'</div></div>';
+    h+='<div class="cons-detail">'+projDetail(p)+'</div>';
+    h+='</div>';
+  });
   h+='</div></div>'; return h;
+}
+
+// Detalle de solo lectura de un proyecto (para expandir en el panel consolidado).
+function projDetail(p) {
+  var tema=temaOf(p); var lx=safeUrl(p.linkExpediente), lt=safeUrl(p.linkTexto);
+  var h='<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
+  if(tema) h+='<span class="pill p-tema">'+esc(tema)+'</span>';
+  h+='<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+  if(lx) h+='<a href="'+lx+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
+  if(lt) h+='<a href="'+lt+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
+  h+='</div>';
+  if(p.autor) h+='<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
+  h+='<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
+  return h;
+}
+function toggleConsDetail(rowEl) {
+  var d=rowEl.parentNode.querySelector('.cons-detail'); if(!d) return;
+  var open=d.classList.toggle('open');
+  var chev=rowEl.querySelector('.mgr-proj-chev'); if(chev) chev.style.transform=open?'rotate(90deg)':'';
 }
 
 async function clearMgrSel(name) {
