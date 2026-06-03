@@ -429,7 +429,7 @@ function renderManager(container) {
   h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para guardar</span>';
   h += '<button class="btn primary" onclick="submitSelection()"><i class="ti ti-device-floppy"></i> Guardar selección</button></div></div>';
   container.innerHTML = h;
-  buildFilters(); renderList(); updateFinfo();
+  buildFilters(); applyFilterPrefs(); renderList(); updateFinfo();
 }
 
 function buildFilters() {
@@ -437,6 +437,24 @@ function buildFilters() {
   if (si) si.innerHTML = SECTOR_FILTER.map(function(s){ return '<div class="dd-item" onclick="toggleSec(\''+s.replace(/'/g,"\\'")+'\',event)"><input type="checkbox" class="sec-chk" value="'+esc(s)+'" checked> '+esc(s)+'</div>'; }).join('');
   var pi = document.getElementById('prov-items');
   if (pi) pi.innerHTML = PROVINCIAS.map(function(p){ return '<div class="dd-item sub" onclick="toggleJur(\''+p.replace(/'/g,"\\'")+'\',event)"><input type="checkbox" class="jur-chk prov-chk" value="'+esc(p)+'" checked> '+esc(p)+'</div>'; }).join('');
+}
+
+// Preferencia de filtros por manager (se recuerda entre sesiones, en este navegador).
+function filterPrefsKey() { return 'sd_filters_' + (currentUser || ''); }
+function saveFilterPrefs() {
+  try {
+    if (!document.querySelector('.sec-chk')) return;
+    localStorage.setItem(filterPrefsKey(), JSON.stringify({sectors: getActiveSectors(), jurs: getActiveJurs()}));
+  } catch(e) {}
+}
+function applyFilterPrefs() {
+  var raw; try { raw = localStorage.getItem(filterPrefsKey()); } catch(e) { return; }
+  if (!raw) return;
+  var p; try { p = JSON.parse(raw); } catch(e) { return; }
+  if (!p) return;
+  if (Array.isArray(p.sectors)) document.querySelectorAll('.sec-chk').forEach(function(c){ c.checked = p.sectors.indexOf(c.value) >= 0; });
+  if (Array.isArray(p.jurs)) document.querySelectorAll('.jur-chk').forEach(function(c){ c.checked = p.jurs.indexOf(c.value) >= 0; });
+  updateSecBtn(); updateJurBtn();
 }
 
 function getActiveSectors() { return Array.from(document.querySelectorAll('.sec-chk:checked')).map(function(c){return c.value;}); }
@@ -546,6 +564,7 @@ function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][c
 
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
+  saveFilterPrefs();
   var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0;});
   var list = document.getElementById('list'); if (!list) return;
   if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados para este día.</div>'; return; }
@@ -578,7 +597,7 @@ function renderList() {
     h += '<div style="margin-bottom:1.5rem">';
     h += '<div style="font-size:14px;font-weight:600;color:var(--text);padding:10px 0 8px;border-bottom:2px solid var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:8px">';
     h += '<i class="ti ti-calendar" style="color:var(--blue);font-size:16px"></i>'+esc(fechaLabel(fecha));
-    h += '<span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">('+ps.length+' proyecto'+(ps.length!==1?'s':'')+')</span></div>';
+    h += '</div>';
     if (allSecSelected()) {
       SEC_ORDER.forEach(function(sec) {
         var sp = ps.filter(function(p){return p.sector===sec;}); if (!sp.length) return;
