@@ -83,7 +83,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .cinfo{flex:1;min-width:0}
 .ctitle{font-size:16px;font-weight:600;line-height:1.4}
 .card.sel .ctitle{margin-bottom:8px}
-.cmeta-min{display:flex;align-items:center;gap:10px;margin-top:8px}
+.cmeta-min{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}
 .others-mark{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--accent)}
 .card-chev{margin-left:auto;align-self:center;color:var(--text3);opacity:.4;font-size:18px;flex-shrink:0;transition:opacity .12s}
 .card:not(.sel):hover .card-chev{opacity:.85}
@@ -486,10 +486,13 @@ function cardHTML(p) {
     h += '</div>';
     h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
   } else {
-    // COLAPSADA: lo mínimo para escanear
+    // COLAPSADA: resumen completo + datos procesales mínimos
     h += '<div class="cmeta-min"><span class="pill p-tema">'+esc(tema)+'</span>';
+    h += '<span class="pill p-num">'+esc(p.num)+'</span>';
+    h += '<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
     if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
     h += '</div>';
+    h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
   }
   h += '</div>'; // cinfo
 
