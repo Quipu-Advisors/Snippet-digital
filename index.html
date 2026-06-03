@@ -96,16 +96,16 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .cresumen{font-size:14px;color:var(--text2);line-height:1.55}
 .impacts-section{margin-top:0}
 .impacts-title{font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.impacts-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 36px}
-.imp-item{display:flex;align-items:center;gap:8px}
-.imp-label{width:150px;flex:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.impacts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 22px}
+.imp-item{display:flex;align-items:center;gap:8px;min-width:0}
+.imp-label{width:116px;flex:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .imp-select{font-size:11px;height:24px;padding:0 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);flex-shrink:0;min-width:62px}
 .imp-select.alto{background:var(--green-bg);color:var(--green);border-color:var(--green-border);font-weight:600}
 .imp-select.medio{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border);font-weight:600}
 .imp-select.bajo{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-weight:600}
 .clink{font-size:11px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
 .cimpact{flex-shrink:0;border-left:1px solid var(--border-light);padding-left:14px;min-width:140px;max-width:180px}
-.cimpact.wide{flex:0 0 46%;max-width:46%;min-width:340px}
+.cimpact.wide{flex:0 0 46%;max-width:46%;min-width:400px}
 .other-imps{margin-bottom:12px}
 .other-imps-t{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
 .other-imp-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
@@ -294,6 +294,12 @@ function mapTema(title, resumen) {
   for (var i = 0; i < TEMAS.length; i++) { for (var j = 0; j < TEMAS[i].keys.length; j++) { if (txt.indexOf(norm(TEMAS[i].keys[j])) >= 0) return TEMAS[i].tema; } }
   return 'Otro';
 }
+// Tema a mostrar: prioriza el que generó la skill (libre); cae al detector por keywords.
+// Devuelve '' si no hay tema real (no mostramos el chip "Otro").
+function temaOf(p) {
+  var t = (p.tema && String(p.tema).trim()) || mapTema(p.title, p.resumen);
+  return (!t || t === 'Otro') ? '' : t;
+}
 function mapOrg(org) {
   var l = (org||'').toLowerCase();
   if (l.indexOf('diputados') >= 0 && l.indexOf('naci') >= 0) return 'Camara de Diputados Nacional';
@@ -466,7 +472,7 @@ function cardHTML(p) {
   var id = String(p.id);
   var isSel = !!localSel[id];
   if (isSel) initImp(id);
-  var tema = mapTema(p.title, p.resumen);
+  var tema = temaOf(p);
   var otherImps = getOtherImpacts(id);
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
 
@@ -479,20 +485,19 @@ function cardHTML(p) {
   if (isSel) {
     // EXPANDIDA: todo el detalle
     h += '<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
-    h += '<span class="pill p-num">'+esc(p.num)+'</span><span class="pill p-tema">'+esc(tema)+'</span>';
+    h += '<span class="pill p-num">'+esc(p.num)+'</span>';
+    if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
     if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
     if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
     h += '</div>';
     h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
   } else {
-    // COLAPSADA: resumen completo + datos procesales mínimos
-    h += '<div class="cmeta-min"><span class="pill p-tema">'+esc(tema)+'</span>';
-    h += '<span class="pill p-num">'+esc(p.num)+'</span>';
-    h += '<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
+    // COLAPSADA (hipercolapsada): solo título + tema
+    h += '<div class="cmeta-min">';
+    if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
     h += '</div>';
-    h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
   }
   h += '</div>'; // cinfo
 
@@ -663,7 +668,7 @@ function buildRows(projects,sels) {
   var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return String(p.id);}),sels);
   return projects.map(function(p){
     var imp=merged[String(p.id)]||{}; var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
-    var cols=[p.num,p.linkExpediente||'',p.fecha,hoy,'Argentina',p.jur,p.autor||'',p.sector,ca,mapTema(p.title,p.resumen),(p.title||'').toUpperCase(),'El proyecto de ley tiene por objeto '+(p.resumen||''),p.linkTexto||'',mapOrg(p.org),'','','',p.fecha].concat(CLIENTS.map(function(c){return imp[c]||'-';}));
+    var cols=[p.num,p.linkExpediente||'',p.fecha,hoy,'Argentina',p.jur,p.autor||'',p.sector,ca,temaOf(p),(p.title||'').toUpperCase(),'El proyecto de ley tiene por objeto '+(p.resumen||''),p.linkTexto||'',mapOrg(p.org),'','','',p.fecha].concat(CLIENTS.map(function(c){return imp[c]||'-';}));
     return cols.join('\t');
   }).join('\n');
 }
@@ -766,7 +771,7 @@ function importJson() {
     if(!num && !title){skipped++;return;}
     clean.push({
       id:newId(), num:num||'(sin número)', title:title||'(sin título)', resumen:resumen,
-      sector:canonSector(o.sector), jur:canonJur(o.jur),
+      sector:canonSector(o.sector), jur:canonJur(o.jur), tema:String(o.tema||'').trim(),
       org:String(o.org||'').trim(), autor:String(o.autor||'').trim(),
       linkExpediente:String(o.linkExpediente||o.linkExp||'').trim(),
       linkTexto:String(o.linkTexto||o.linkPdf||'').trim(),
