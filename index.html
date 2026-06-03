@@ -467,15 +467,10 @@ function renderLogin() {
 
 function teamLogout() { setGatePassed(false); renderGate(); }
 
-async function login(name) {
+function login(name) {
   currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {};
-  showOverlay('Cargando proyectos...');
-  try {
-    PROJECTS = await dbGetAllProjects();      // histórico completo
-    SELS = await dbGetAllSelections();         // todas las selecciones, por manager
-  } catch(e) { hideOverlay(); alert('No se pudieron cargar los datos: ' + e.message); return; }
-  loadLocalFromSels();
-  hideOverlay(); buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
+  // Cada vista (mgr/adm/consolidado) carga sus propios datos al renderizarse.
+  buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
 }
 // Carga lo que YA calificó el manager (queda "marcado", colapsado por defecto).
 function loadLocalFromSels() {
@@ -488,7 +483,12 @@ function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr'
 /* ============================================================
    VISTA MANAGER (seleccion)
    ============================================================ */
-function renderManager(container) {
+async function renderManager(container) {
+  // Siempre carga el histórico completo (no depende de la pestaña anterior).
+  showOverlay('Cargando proyectos...');
+  try { PROJECTS = await dbGetAllProjects(); SELS = await dbGetAllSelections(); } catch(e) {}
+  loadLocalFromSels();
+  hideOverlay();
   var h = '<div class="toolbar">';
   h += '<label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
