@@ -63,6 +63,12 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Agregar/quitar **provincias/jurisdicciones** | `var PROVINCIAS = [...]` |
 | Cambiar la **base de datos** | `var SB_URL` / `var SB_ANON` |
 | Colores de marca | variables `--blue` (#395279) y `--accent` (#C0714D) en `:root` |
+| Cambiar las **columnas del export a Sheets** (master tracker) | función `buildRows` + array `SHEET_IMPACT_COLS` |
+
+> **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34 columnas del
+> **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (19-34) usan su propio orden y
+> nombres de la planilla (Microsoft, Amazon, Tiktok, Worldcoin, Didi…), mapeados a los clientes de
+> la app en `SHEET_IMPACT_COLS`. Si cambia la planilla (orden, nombres o columnas), ajustá ahí.
 
 Notas:
 - **Admin = pertenecer a Research.** Quien esté en `RESEARCH` ve los 3 pasos (Cargar proyectos →

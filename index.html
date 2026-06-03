@@ -761,12 +761,44 @@ function mergeImpacts(pids,sels) {
   return merged;
 }
 
+// Orden y mapeo de las columnas de impacto del Master Tracker 2.0 (col 19-34).
+// {col: nombre en la planilla, key: cliente en la app CLIENTS}
+var SHEET_IMPACT_COLS = [
+  {col:'Microsoft', key:'Microsoft'},
+  {col:'Amazon',    key:'Amazon (grado)'},
+  {col:'AMEX',      key:'AMEX'},
+  {col:'Coca',      key:'Coca'},
+  {col:'Kenvue',    key:'Kenvue'},
+  {col:'Spotify',   key:'Spotify'},
+  {col:'AWS',       key:'AWS'},
+  {col:'Tiktok',    key:'TikTok'},
+  {col:'Roblox',    key:'Roblox'},
+  {col:'Syngenta',  key:'Syngenta'},
+  {col:'Didi',      key:'Didi'},
+  {col:'Airbnb',    key:'Airbnb'},
+  {col:'Worldcoin', key:'World'},
+  {col:'Tetrapak',  key:'Tetrapak'},
+  {col:'Sanofi',    key:'Sanofi'},
+  {col:'Rio Tinto', key:'Rio Tinto'}
+];
+
+// Genera filas tabuladas alineadas a las columnas del Master Tracker 2.0 (Sheet1):
+// 1 Número oficial · 2 Link expediente · 3 Fecha presentación · 4 Fecha últ. act. (Quipu) ·
+// 5 Jurisdiccion · 6 Subjurisdicción · 7 Autor · 8 Sector · 9 Clientes afectados · 10 Tema ·
+// 11 Sumario · 12 Resumen · 13 Texto · 14 Organismo · 15 Prob. aprobación · 16 Estado ·
+// 17 Último movimiento · 18 Fecha últ. movimiento · 19-34 Impacto por cliente.
 function buildRows(projects,sels) {
   var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return String(p.id);}),sels);
   return projects.map(function(p){
-    var imp=merged[String(p.id)]||{}; var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
-    var cols=[p.num,p.linkExpediente||'',p.fecha,hoy,'Argentina',p.jur,p.autor||'',p.sector,ca,temaOf(p),(p.title||'').toUpperCase(),'El proyecto de ley tiene por objeto '+(p.resumen||''),p.linkTexto||'',mapOrg(p.org),'','','',p.fecha].concat(CLIENTS.map(function(c){return imp[c]||'-';}));
-    return cols.join('\t');
+    var imp=merged[String(p.id)]||{};
+    var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
+    var base=[
+      p.num, p.linkExpediente||'', p.fecha, hoy, 'Argentina', p.jur, p.autor||'', p.sector, ca,
+      temaOf(p), (p.title||'').toUpperCase(), 'El proyecto de ley tiene por objeto '+(p.resumen||''),
+      p.linkTexto||'', mapOrg(p.org), '', '', '', ''
+    ];
+    var impacts=SHEET_IMPACT_COLS.map(function(x){return imp[x.key]||'-';});
+    return base.concat(impacts).join('\t');
   }).join('\n');
 }
 
