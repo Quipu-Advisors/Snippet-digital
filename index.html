@@ -117,6 +117,11 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .p-tema{background:var(--accent-bg);color:var(--accent);border:0.5px solid var(--accent-border)}
 .card.rated{border-left:3px solid var(--green-border)}
 .card.nuevo{border-left:3px solid var(--accent)}
+.card.read:not(.sel),.card.rated:not(.sel){opacity:.6}
+.card.read:not(.sel):hover,.card.rated:not(.sel):hover{opacity:1}
+.card-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:7px}
+.card-status.leido{color:var(--text3)}
+.card-status.rot{color:var(--green)}
 .card-nuevo{position:absolute;top:0;right:0;background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:0 8px 0 8px}
 .cresumen{font-size:14px;color:var(--text2);line-height:1.55}
 .cautor{font-size:12px;color:var(--text2);margin:0 0 8px;display:flex;align-items:center;gap:5px}
@@ -303,7 +308,10 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, onlyToday = false, saveTimer = null;
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, readSet = {}, onlyToday = false, saveTimer = null;
+// "Leído" por usuario (qué proyectos abrió), persistido en el navegador.
+function loadReadSet() { readSet = {}; try { (JSON.parse(localStorage.getItem('sd_read_'+(currentUser||''))||'[]')).forEach(function(id){ readSet[String(id)]=1; }); } catch(e) {} }
+function markRead(id) { id=String(id); if(readSet[id]) return; readSet[id]=1; try { localStorage.setItem('sd_read_'+(currentUser||''), JSON.stringify(Object.keys(readSet))); } catch(e) {} }
 function setOnlyToday(v) { onlyToday = !!v; renderList(); }
 var _idSeq = 0;
 
@@ -486,7 +494,7 @@ async function renderManager(container) {
   // Siempre carga el histórico completo (no depende de la pestaña anterior).
   showOverlay('Cargando proyectos...');
   try { PROJECTS = await dbGetAllProjects(); SELS = await dbGetAllSelections(); } catch(e) {}
-  loadLocalFromSels();
+  loadLocalFromSels(); loadReadSet();
   hideOverlay();
   var h = '<div class="toolbar">';
   h += '<label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
@@ -572,14 +580,15 @@ function impactBadgeStyle(level) {
 function cardHTML(p) {
   var id = String(p.id);
   var isExp = !!expanded[id];        // expandida (estado de UI)
-  var isRated = !!localSel[id];      // ya calificada (tiene impacto cargado)
+  var isRated = !!localSel[id];      // ya calificada (tiene impacto cargado) = "Rotulado"
+  var isRead = !!readSet[id] || isRated;  // ya abierta por este usuario = "Leído"
   if (isExp) initImp(id);
   var tema = temaOf(p);
   var otherImps = getOtherImpacts(id);
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
   var nuevo = loadedToday(p);
 
-  var h = '<div class="card'+(isExp?' sel':'')+(isRated&&!isExp?' rated':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
+  var h = '<div class="card'+(isExp?' sel':'')+(isRated&&!isExp?' rated':'')+(isRead&&!isExp?' read':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
   if (nuevo) h += '<span class="card-nuevo">Nuevo</span>';
   h += '<div class="chk">'+(isRated?'<i class="ti ti-check" style="font-size:12px;color:#fff"></i>':'')+'</div>';
 
@@ -604,6 +613,8 @@ function cardHTML(p) {
     if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
     h += '</div>';
+    if (isRated) h += '<div class="card-status rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado</div>';
+    else if (isRead) h += '<div class="card-status leido"><i class="ti ti-check" style="font-size:11px"></i> Leído</div>';
   }
   h += '</div>'; // cinfo
 
@@ -716,7 +727,7 @@ function renderList() {
   list.innerHTML = h;
 }
 
-function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(expanded[id]){delete expanded[id];}else{expanded[id]=true;initImp(id);} renderList(); }
+function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(expanded[id]){delete expanded[id];}else{expanded[id]=true;initImp(id);markRead(id);} renderList(); }
 function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) marcado(s)':'Marcá proyectos y cargá su impacto'; }
 function updateTodayLegend() {
   var el=document.getElementById('today-legend'); if(!el) return;
