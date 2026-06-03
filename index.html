@@ -105,6 +105,9 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .imp-select.alto{background:var(--green-bg);color:var(--green);border-color:var(--green-border);font-weight:600}
 .imp-select.medio{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border);font-weight:600}
 .imp-select.bajo{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-weight:600}
+.imp-locked{display:inline-flex;align-items:center;gap:5px;flex:1;min-width:0}
+.imp-locked-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0}
+.imp-locked-name{font-size:10px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .clink{font-size:11px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
 .cimpact{flex-shrink:0;border-left:1px solid var(--border-light);padding-left:14px;min-width:140px;max-width:180px}
 .cimpact.wide{flex:0 0 46%;max-width:46%;min-width:400px}
@@ -528,14 +531,6 @@ function cardHTML(p) {
   // MITAD DERECHA: solo al expandir (impacto). Colapsada: chevron sutil.
   if (isSel) {
     h += '<div class="cimpact wide" onclick="event.stopPropagation()">';
-    if (otherImps.length) {
-      h += '<div class="other-imps"><div class="other-imps-t">Impactos de otros</div>';
-      otherImps.forEach(function(x) {
-        h += '<div class="other-imp-row"><span class="other-imp-badge" style="'+impactBadgeStyle(x.level)+'">'+esc(x.level)+'</span>';
-        h += '<span class="other-imp-name" title="'+esc(x.name+' - '+x.client)+'">'+esc(x.name.split(' ')[0]+' · '+x.client)+'</span></div>';
-      });
-      h += '</div>';
-    }
     h += renderImp(id);
     h += '</div>';
   } else {
@@ -550,13 +545,33 @@ function renderImp(pid) {
   var imp = localImp[pid];
   var h = '<div class="impacts-section" onclick="event.stopPropagation()"><div class="impacts-title">Impacto por cliente</div><div class="impacts-grid">';
   CLIENTS.forEach(function(c) {
-    var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
-    var cj = c.replace(/'/g,"\\'");
-    h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span><select class="imp-select '+cls+'" onchange="setImp(\''+pid+'\',\''+cj+'\',this.value);colorSel(this)">';
-    IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
-    h += '</select></div>';
+    h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span>';
+    var lock = clientLock(pid, c);
+    if (lock) {
+      // Ya lo calificó otra persona: bloqueado, con su nombre al lado.
+      h += '<span class="imp-locked" title="Calificado por '+esc(lock.name)+'"><span class="imp-locked-badge" style="'+impactBadgeStyle(lock.level)+'">'+esc(lock.level)+'</span><span class="imp-locked-name">'+esc(lock.name.split(' ')[0])+'</span></span>';
+    } else {
+      var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
+      var cj = c.replace(/'/g,"\\'");
+      h += '<select class="imp-select '+cls+'" onchange="setImp(\''+pid+'\',\''+cj+'\',this.value);colorSel(this)">';
+      IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
+      h += '</select>';
+    }
+    h += '</div>';
   });
   h += '</div></div>'; return h;
+}
+
+// Devuelve {name, level} si OTRO manager ya calificó este cliente (queda bloqueado), o null.
+function clientLock(pid, client) {
+  pid = String(pid); var found = null;
+  Object.keys(SELS).forEach(function(m) {
+    if (m === currentUser || found) return;
+    var s = SELS[m]; if (!s[pid] || !s[pid].impacts) return;
+    var v = s[pid].impacts[client];
+    if (v && v !== '-') found = {name: m, level: v};
+  });
+  return found;
 }
 
 function colorSel(el) { el.className = 'imp-select '+(el.value==='Alto'?'alto':el.value==='Medio'?'medio':el.value==='Bajo'?'bajo':''); }
