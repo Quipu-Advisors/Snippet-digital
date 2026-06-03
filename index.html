@@ -28,11 +28,12 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .nav-logout:hover{border-color:var(--accent);color:#fff;background:var(--accent)}
 .mulita-help{position:relative;display:flex;align-items:center;cursor:help;color:#CBD7E6}
 .mulita-help:hover{color:#fff}
-.mulita-svg{width:30px;height:23px}
+.mulita-img{height:24px;width:auto;display:block}
+.mulita-help:hover .mulita-img{filter:brightness(1.25)}
 .help-pop{display:none;position:absolute;top:150%;right:0;z-index:200;width:330px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--radius-lg);box-shadow:0 10px 28px rgba(0,0,0,.2);padding:14px 16px;cursor:default}
 .mulita-help:hover .help-pop,.mulita-help:focus-within .help-pop{display:block}
 .help-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--blue);margin-bottom:10px}
-.help-title .mulita-svg{width:26px;height:20px;color:var(--accent);flex-shrink:0}
+.mulita-img.sm{height:18px;flex-shrink:0;filter:brightness(.5)}
 .help-steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
 .help-steps li{font-size:12px;line-height:1.45;color:var(--text2)}
 .help-steps b{color:var(--text);font-weight:700}
@@ -362,22 +363,10 @@ function navFecha() {
 }
 
 // Mulita (mascota) + popover con instrucciones rápidas al pasar el mouse.
-var MULITA_SVG = '<svg class="mulita-svg" viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-  + '<path d="M8 23 C8 12 15 8 22 8 C31 8 35 15 35 23"/>'
-  + '<path d="M8 23 L35 23"/>'
-  + '<path d="M15.5 9 C14.5 14 14 19 14 23"/>'
-  + '<path d="M22 8 C22 14 22 18 22 23"/>'
-  + '<path d="M28.5 9.2 C29.5 14 30 19 30 23"/>'
-  + '<path d="M8 23 C4 23 2 19 4 16.5 C5.5 15 7.5 15 8.5 16"/>'
-  + '<path d="M4 16.5 L1.5 16"/>'
-  + '<path d="M7 15 L6.4 12 L9 14"/>'
-  + '<circle cx="6" cy="18.5" r="0.9" fill="currentColor" stroke="none"/>'
-  + '<path d="M14 23 L14 27"/><path d="M28 23 L28 27"/>'
-  + '<path d="M35 23 C39 23 39.5 20 37.5 18"/>'
-  + '</svg>';
+var MULITA_ICON = '<img class="mulita-img" src="mulita.png" alt="" aria-hidden="true">';
 function helpMulita() {
-  return '<span class="mulita-help" tabindex="0" aria-label="Cómo usar">' + MULITA_SVG
-    + '<div class="help-pop"><div class="help-title">'+MULITA_SVG+' Cómo cargar tu revisión</div>'
+  return '<span class="mulita-help" tabindex="0" aria-label="Cómo usar">' + MULITA_ICON
+    + '<div class="help-pop"><div class="help-title"><img class="mulita-img sm" src="mulita.png" alt="" aria-hidden="true"> Cómo cargar tu revisión</div>'
     + '<ol class="help-steps">'
     + '<li>Elegí el <b>Día</b> (arriba a la izquierda).</li>'
     + '<li>Si querés, filtrá por <b>Sector</b> / <b>Jurisdicción</b>. Tus filtros quedan recordados.</li>'
