@@ -37,7 +37,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .help-steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
 .help-steps li{font-size:12px;line-height:1.45;color:var(--text2)}
 .help-steps b{color:var(--text);font-weight:700}
-.help-note{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:11px;color:var(--text3);line-height:1.45}
+.help-intro{font-size:11.5px;color:var(--text2);line-height:1.45;margin-bottom:10px}
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 48px);padding:2rem}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:380px}
 .login-card.wide{max-width:760px;background:transparent;border:0;padding:0}
@@ -393,14 +393,13 @@ var MULITA_ICON = '<img class="mulita-img" src="mulita.png" alt="" aria-hidden="
 function helpMulita() {
   return '<span class="mulita-help" tabindex="0" aria-label="Cómo usar">' + MULITA_ICON
     + '<div class="help-pop"><div class="help-title"><img class="mulita-img sm" src="mulita.png" alt="" aria-hidden="true"> Cómo cargar tu revisión</div>'
+    + '<div class="help-intro">Los proyectos se visualizan según el orden cronológico en que fueron reportados.</div>'
     + '<ol class="help-steps">'
-    + '<li>Elegí el <b>Día</b> (arriba a la izquierda).</li>'
-    + '<li>Si querés, filtrá por <b>Sector</b> / <b>Jurisdicción</b>. Tus filtros quedan recordados.</li>'
+    + '<li>El toggle <b>“Solo reportados hoy”</b> muestra lo nuevo del día; el tag <b>NUEVO</b> marca lo cargado hoy.</li>'
+    + '<li>Si querés, filtrá por <b>Sector / Jurisdicción</b>. Tus filtros quedan recordados.</li>'
     + '<li>Hacé <b>clic en un proyecto</b> para abrirlo y leer el detalle (resumen, autor, texto).</li>'
     + '<li>Cargá el <b>impacto por cliente</b> en los desplegables (Alto / Medio / Bajo / N/A). <b>Se guarda solo.</b></li>'
-    + '<li>El toggle <b>“Solo reportados hoy”</b> muestra lo nuevo del día; el tag <b>NUEVO</b> marca lo cargado hoy.</li>'
     + '</ol>'
-    + '<div class="help-note">Si un cliente ya fue calificado por otra persona, queda fijo con su nombre — no se puede pisar.</div>'
     + '</div></span>';
 }
 
