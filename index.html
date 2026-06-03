@@ -33,10 +33,10 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .login-title{font-size:18px;font-weight:800;letter-spacing:.01em;margin-bottom:4px}
 .lg-group-title i{font-size:13px}
 .login-sub{font-size:13px;color:var(--text3);margin-bottom:1.5rem}
-.login-opt{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:6px;background:var(--surface)}
-.login-opt:last-child{margin-bottom:0}
-.login-opt i{font-size:20px}
-.login-opt strong{font-size:13px;display:block}
+.lg-names{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.login-opt{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--surface);min-width:0}
+.login-opt i{font-size:16px;flex-shrink:0}
+.login-opt strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .login-opt span{font-size:11px;color:var(--text3)}
 .lg-group{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:0}
 .lg-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -378,10 +378,11 @@ function renderLogin() {
   h += '<div class="lg-groups">';
   groups.forEach(function(g) {
     h += '<div class="lg-group ' + g.cls + '"><div class="lg-group-title"><i class="ti ' + g.icon + '"></i> ' + g.title + '</div>';
+    h += '<div class="lg-names">';
     g.names.forEach(function(m) {
-      h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><div><strong>' + esc(m) + '</strong></div></div>';
+      h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><strong>' + esc(m) + '</strong></div>';
     });
-    h += '</div>';
+    h += '</div></div>';
   });
   h += '</div>';
   h += '<div class="login-foot"><a onclick="teamLogout()">Cerrar sesión del equipo</a></div>';
