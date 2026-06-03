@@ -116,6 +116,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .p-org{background:#F1EFE8;color:#5F5E5A;font-weight:400}
 .p-fecha{background:var(--bg);color:var(--text2);font-weight:400}
 .p-tema{background:var(--accent-bg);color:var(--accent);border:0.5px solid var(--accent-border)}
+.card.rated{border-left:3px solid var(--green-border)}
 .card.nuevo{border-left:3px solid var(--accent)}
 .card-nuevo{position:absolute;top:0;right:0;background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:0 8px 0 8px}
 .cresumen{font-size:14px;color:var(--text2);line-height:1.55}
@@ -245,12 +246,13 @@ async function dbGetProjects(d) {
   try { var r = await sbFetch('projects?date=eq.' + d + '&select=data'); return normalizeProjects((r && r[0] && r[0].data) || []); }
   catch(e) { return []; }
 }
-// Todos los proyectos de todas las fechas (para vistas globales).
+// Todos los proyectos de todas las fechas (vista histórica). Cada proyecto queda marcado
+// con _d = la fecha (ISO) de la fila en que se cargó.
 async function dbGetAllProjects() {
   try {
     var r = await sbFetch('projects?select=date,data&order=date.desc');
     var all = [];
-    (r || []).forEach(function(row){ (row.data || []).forEach(function(p){ all.push(p); }); });
+    (r || []).forEach(function(row){ (row.data || []).forEach(function(p){ p._d = row.date; all.push(p); }); });
     all = normalizeProjects(all);
     all.sort(function(a,b){ return fechaSortKey(b.fecha).localeCompare(fechaSortKey(a.fecha)); });
     return all;
@@ -261,14 +263,27 @@ async function dbSaveProjects(d, ps) {
   await sbFetch('projects?date=eq.' + d, 'DELETE');
   if (ps.length) await sbFetch('projects', 'POST', {id: Date.now(), date: d, data: ps});
 }
-// Selecciones de UNA fecha: {manager: data}.
+// Selecciones de UNA fecha: {manager: data}. (Solo para compatibilidad / admin.)
 async function dbGetSelections(d) {
   try { var r = await sbFetch('selections?date=eq.' + d + '&select=manager,data'); var o = {}; (r || []).forEach(function(x){ o[x.manager] = x.data; }); return o; }
   catch(e) { return {}; }
 }
-async function dbSaveSelection(d, m, data) {
-  await sbFetch('selections?date=eq.' + d + '&manager=eq.' + encodeURIComponent(m), 'DELETE');
-  await sbFetch('selections', 'POST', {date: d, manager: m, data: data, updated_at: new Date().toISOString()});
+// TODAS las selecciones de TODOS los managers, fusionadas por manager (histórico).
+// Cada proyecto vive en un solo día, así que la unión por id no tiene conflictos.
+async function dbGetAllSelections() {
+  try {
+    var r = await sbFetch('selections?select=manager,data');
+    var out = {};
+    (r || []).forEach(function(x){ if(!out[x.manager]) out[x.manager]={}; Object.assign(out[x.manager], x.data || {}); });
+    return out;
+  } catch(e) { return {}; }
+}
+// Guarda TODA la selección de un manager en una sola fila (date-agnóstica).
+// Borra cualquier fila previa del manager (consolida datos viejos por día).
+var SEL_DATE = '2000-01-01';
+async function dbSaveSelectionAll(m, data) {
+  await sbFetch('selections?manager=eq.' + encodeURIComponent(m), 'DELETE');
+  if (data && Object.keys(data).length) await sbFetch('selections', 'POST', {date: SEL_DATE, manager: m, data: data, updated_at: new Date().toISOString()});
 }
 
 /* ============================================================
@@ -289,7 +304,7 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, onlyToday = false, saveTimer = null;
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, onlyToday = false, saveTimer = null;
 function setOnlyToday(v) { onlyToday = !!v; renderList(); }
 var _idSeq = 0;
 
@@ -453,17 +468,18 @@ function renderLogin() {
 function teamLogout() { setGatePassed(false); renderGate(); }
 
 async function login(name) {
-  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {};
+  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {};
   showOverlay('Cargando proyectos...');
   try {
-    PROJECTS = await dbGetProjects(viewDate);
-    SELS = await dbGetSelections(viewDate);
+    PROJECTS = await dbGetAllProjects();      // histórico completo
+    SELS = await dbGetAllSelections();         // todas las selecciones, por manager
   } catch(e) { hideOverlay(); alert('No se pudieron cargar los datos: ' + e.message); return; }
   loadLocalFromSels();
   hideOverlay(); buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
 }
+// Carga lo que YA calificó el manager (queda "marcado", colapsado por defecto).
 function loadLocalFromSels() {
-  localSel = {}; localImp = {};
+  localSel = {}; localImp = {}; expanded = {};
   if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){ localSel[pid] = true; localImp[pid] = SELS[currentUser][pid].impacts || {}; }); }
 }
 function logout() { currentUser=null; localSel={}; localImp={}; PROJECTS=[]; SELS={}; buildNav(); renderLogin(); }
@@ -474,8 +490,6 @@ function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr'
    ============================================================ */
 function renderManager(container) {
   var h = '<div class="toolbar">';
-  h += '<label for="mgr-date">Día</label><input type="date" class="tb-date" id="mgr-date" value="' + viewDate + '" max="' + isoToday() + '" onchange="changeDate(this.value)">';
-  h += '<span class="tb-sep"></span>';
   h += '<label>Sector</label><div class="dd-wrap"><button class="dd-btn" id="dd-sec-btn" onclick="toggleMenu(\'sec\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
   h += '<label>Jurisdicción</label><div class="dd-wrap"><button class="dd-btn" id="dd-jur-btn" onclick="toggleMenu(\'jur\',event)">Todas</button>';
@@ -559,21 +573,22 @@ function impactBadgeStyle(level) {
 
 function cardHTML(p) {
   var id = String(p.id);
-  var isSel = !!localSel[id];
-  if (isSel) initImp(id);
+  var isExp = !!expanded[id];        // expandida (estado de UI)
+  var isRated = !!localSel[id];      // ya calificada (tiene impacto cargado)
+  if (isExp) initImp(id);
   var tema = temaOf(p);
   var otherImps = getOtherImpacts(id);
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
   var nuevo = loadedToday(p);
 
-  var h = '<div class="card'+(isSel?' sel':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
+  var h = '<div class="card'+(isExp?' sel':'')+(isRated&&!isExp?' rated':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
   if (nuevo) h += '<span class="card-nuevo">Nuevo</span>';
-  h += '<div class="chk">'+(isSel?'<i class="ti ti-check" style="font-size:12px;color:#fff"></i>':'')+'</div>';
+  h += '<div class="chk">'+(isRated?'<i class="ti ti-check" style="font-size:12px;color:#fff"></i>':'')+'</div>';
 
   // MITAD IZQUIERDA: info del proyecto
   h += '<div class="cinfo">';
   h += '<div class="ctitle">'+esc(p.title)+'</div>';
-  if (isSel) {
+  if (isExp) {
     // EXPANDIDA: todo el detalle
     h += '<div class="cmeta">';
     h += '<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
@@ -595,7 +610,7 @@ function cardHTML(p) {
   h += '</div>'; // cinfo
 
   // MITAD DERECHA: solo al expandir (impacto). Colapsada: chevron sutil.
-  if (isSel) {
+  if (isExp) {
     h += '<div class="cimpact wide" onclick="event.stopPropagation()">';
     h += renderImp(id);
     h += '</div>';
@@ -641,14 +656,20 @@ function clientLock(pid, client) {
 }
 
 function colorSel(el) { el.className = 'imp-select '+(el.value==='Alto'?'alto':el.value==='Medio'?'medio':el.value==='Bajo'?'bajo':''); }
-function setImp(pid,client,val) { pid=String(pid); initImp(pid); localImp[pid][client]=val; scheduleSave(); }
+function setImp(pid,client,val) {
+  pid=String(pid); initImp(pid); localImp[pid][client]=val;
+  // "Calificado" = tiene al menos un impacto != '-'
+  var rated = CLIENTS.some(function(c){ return localImp[pid][c] && localImp[pid][c]!=='-'; });
+  if (rated) localSel[pid]=true; else delete localSel[pid];
+  updateFinfo(); scheduleSave();
+}
 
 function renderList() {
   var aS=getActiveSectors(),aJ=getActiveJurs();
   saveFilterPrefs();
   var f = PROJECTS.filter(function(p){return aS.indexOf(p.sector)>=0 && aJ.indexOf(p.jur)>=0 && (!onlyToday || loadedToday(p));});
   var list = document.getElementById('list'); if (!list) return;
-  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos cargados para este día.</div>'; return; }
+  if (!PROJECTS.length) { list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto 10px"></i>Todavía no hay proyectos cargados.</div>'; return; }
   if (!f.length) { list.innerHTML='<div class="empty"><i class="ti ti-filter-off" style="font-size:28px;display:block;margin:0 auto 10px"></i>No hay proyectos con esos filtros</div>'; return; }
 
   var groups = {}, groupOrder = [];
@@ -693,7 +714,7 @@ function renderList() {
   list.innerHTML = h;
 }
 
-function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); scheduleSave(); }
+function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(expanded[id]){delete expanded[id];}else{expanded[id]=true;initImp(id);} renderList(); }
 function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) marcado(s)':'Marcá proyectos y cargá su impacto'; }
 function updateTodayLegend() {
   var el=document.getElementById('today-legend'); if(!el) return;
@@ -725,7 +746,7 @@ function scheduleSave() { setSaveStatus('saving'); clearTimeout(saveTimer); save
 function commitSave() {
   var sd={}; Object.keys(localSel).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, ts:Date.now()}; });
   SELS[currentUser]=sd;
-  dbSaveSelection(viewDate,currentUser,sd).then(function(){ setSaveStatus('saved'); }).catch(function(){ setSaveStatus('error'); });
+  dbSaveSelectionAll(currentUser,sd).then(function(){ setSaveStatus('saved'); }).catch(function(){ setSaveStatus('error'); });
 }
 
 /* ============================================================
@@ -734,10 +755,12 @@ function commitSave() {
 async function renderConsolidado(container) {
   showOverlay('Cargando consolidado...');
   try { PROJECTS = await dbGetProjects(viewDate); } catch(e) { PROJECTS = []; }
-  try { SELS = await dbGetSelections(viewDate); } catch(e) { SELS = {}; }
+  try { SELS = await dbGetAllSelections(); } catch(e) { SELS = {}; }
   hideOverlay();
-  var mns=Object.keys(SELS);
-  var selPids={}; mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){selPids[String(pid)]=true;});});
+  var dayIds={}; PROJECTS.forEach(function(p){ dayIds[String(p.id)]=1; });
+  // solo managers con alguna selección entre los proyectos de este día
+  var mns=Object.keys(SELS).filter(function(m){ return Object.keys(SELS[m]).some(function(pid){ return dayIds[pid]; }); });
+  var selPids={}; mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){ if(dayIds[pid]) selPids[String(pid)]=true;});});
   var sp=PROJECTS.filter(function(p){return selPids[String(p.id)];});
   var h='<div class="admin-body">';
   h+='<div class="m-date" style="justify-content:flex-end;margin-bottom:12px"><label for="cons-date">Día</label><input type="date" id="cons-date" value="'+viewDate+'" max="'+isoToday()+'" onchange="consolidadoChangeDate(this.value)"></div>';
@@ -796,9 +819,11 @@ function toggleConsDetail(rowEl) {
 }
 
 async function clearMgrSel(name) {
-  if(!confirm('Eliminar la seleccion de '+name+'?'))return;
+  if(!confirm('Eliminar la selección de '+name+' para este día?'))return;
   showOverlay('Eliminando...');
-  try{await sbFetch('selections?date=eq.'+viewDate+'&manager=eq.'+encodeURIComponent(name),'DELETE');delete SELS[name];}catch(e){}
+  var sel=SELS[name]||{}; var dayIds={}; PROJECTS.forEach(function(p){ dayIds[String(p.id)]=1; });
+  var remaining={}; Object.keys(sel).forEach(function(pid){ if(!dayIds[pid]) remaining[pid]=sel[pid]; });
+  try{ await dbSaveSelectionAll(name, remaining); SELS[name]=remaining; }catch(e){}
   hideOverlay(); renderConsolidado(document.getElementById('app'));
 }
 
