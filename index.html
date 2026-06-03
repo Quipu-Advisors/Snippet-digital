@@ -61,7 +61,8 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .toolbar label{font-size:13px;color:var(--text2)}
 .toolbar .tb-date{font-size:13px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;color:var(--text);background:var(--surface);cursor:pointer}
 .tb-sep{width:1px;align-self:stretch;background:var(--border);margin:2px 6px}
-.tb-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none}
+.tb-legend{flex:1;text-align:center;font-size:13px;font-weight:700;color:var(--accent);padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
 .tb-toggle input{display:none}
 .tb-switch{width:34px;height:18px;border-radius:20px;background:var(--border);position:relative;transition:background .15s;flex-shrink:0}
 .tb-switch::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -451,13 +452,14 @@ function renderManager(container) {
   h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
+  h += '<div class="tb-legend" id="today-legend"></div>';
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div id="submit-status"></div><div class="footer-top"><span class="footer-info" id="finfo">Selecciona proyectos para guardar</span>';
   h += '<button class="btn primary" onclick="submitSelection()"><i class="ti ti-device-floppy"></i> Guardar selección</button></div></div>';
   container.innerHTML = h;
-  buildFilters(); applyFilterPrefs(); renderList(); updateFinfo();
+  buildFilters(); applyFilterPrefs(); renderList(); updateFinfo(); updateTodayLegend();
 }
 
 function buildFilters() {
@@ -660,6 +662,11 @@ function renderList() {
 
 function toggleCard(id,e) { id=String(id); if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return; if(localSel[id]){delete localSel[id];delete localImp[id];}else{localSel[id]=true;initImp(id);} renderList(); updateFinfo(); }
 function updateFinfo() { var n=Object.keys(localSel).length; var fi=document.getElementById('finfo'); if(fi)fi.textContent=n?n+' proyecto(s) listo(s) para guardar':'Selecciona proyectos para guardar'; }
+function updateTodayLegend() {
+  var el=document.getElementById('today-legend'); if(!el) return;
+  var n=PROJECTS.filter(loadedToday).length;
+  el.textContent = n>0 ? ('Hoy reportamos '+n+' proyecto'+(n!==1?'s':'')+' nuevo'+(n!==1?'s':'')) : '';
+}
 
 async function changeDate(iso) {
   if (!iso) return;
@@ -669,7 +676,7 @@ async function changeDate(iso) {
   catch(e) { hideOverlay(); return; }
   loadLocalFromSels();
   hideOverlay();
-  renderList(); updateFinfo();
+  renderList(); updateFinfo(); updateTodayLegend();
 }
 
 async function submitSelection() {
