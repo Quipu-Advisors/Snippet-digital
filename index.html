@@ -139,11 +139,11 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .card.nuevo{border-left:3px solid var(--accent)}
 .card.read:not(.sel),.card.rated:not(.sel){opacity:.6}
 .card.read:not(.sel):hover,.card.rated:not(.sel):hover{opacity:1}
-.card-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:7px}
-.card-status.leido{color:var(--text3)}
-.card-status.rot{color:var(--green)}
-.card-status.late{color:var(--red)}
-.cs-late-ic{color:var(--red);font-size:12px;vertical-align:middle}
+.card-status{display:flex;align-items:center;gap:12px;margin-top:7px;flex-wrap:wrap}
+.cs{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.cs-leido{color:var(--text3)}
+.cs-rot{color:var(--green)}
+.cs-late{color:var(--red)}
 .late-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
 .late-msg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--red)}
 .late-btn{font-size:11px;font-weight:700;padding:5px 11px;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
@@ -691,7 +691,6 @@ function cardHTML(p) {
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
   var nuevo = loadedToday(p);
   var vencido = isOverdue(p);
-  var clk = vencido ? ' <i class="ti ti-clock-x cs-late-ic" title="Fecha de corte vencida"></i>' : '';
 
   var h = '<div class="card'+(isExp?' sel':'')+(isRated&&!isExp?' rated':'')+(isRead&&!isExp?' read':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
   if (nuevo) h += '<span class="card-nuevo">Nuevo</span>';
@@ -718,9 +717,11 @@ function cardHTML(p) {
     if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
     h += '</div>';
-    if (isRated) h += '<div class="card-status rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado'+clk+'</div>';
-    else if (isRead) h += '<div class="card-status leido"><i class="ti ti-check" style="font-size:11px"></i> Leído'+clk+'</div>';
-    else if (vencido) h += '<div class="card-status late"><i class="ti ti-clock-x" style="font-size:11px"></i> Fuera de fecha</div>';
+    var parts = '';
+    if (isRated) parts += '<span class="cs cs-rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado</span>';
+    else if (isRead) parts += '<span class="cs cs-leido"><i class="ti ti-check" style="font-size:11px"></i> Leído</span>';
+    if (vencido) parts += '<span class="cs cs-late"><i class="ti ti-clock-x" style="font-size:11px"></i> Fuera de fecha</span>';
+    if (parts) h += '<div class="card-status">'+parts+'</div>';
   }
   h += '</div>'; // cinfo
 
