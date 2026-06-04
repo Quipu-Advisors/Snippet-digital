@@ -64,6 +64,14 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Cambiar la **base de datos** | `var SB_URL` / `var SB_ANON` |
 | Colores de marca | variables `--blue` (#395279) y `--accent` (#C0714D) en `:root` |
 | Cambiar las **columnas del export a Sheets** (master tracker) | función `buildRows` + array `SHEET_IMPACT_COLS` |
+| Cambiar los **días/hora de corte** | constantes `CUTOFF_DOWS` (0=Dom..6=Sáb; default `[2,5]`=Mar/Vie) y `CUTOFF_HOUR` (default 12) |
+
+> **Fechas de corte:** para evitar backlog, cada proyecto debe rotularse antes del próximo corte
+> (Mar/Vie 12:00 por defecto). `cutoffDeadline(_d)` calcula el deadline (primer corte posterior al
+> día de reporte) e `isOverdue(p)` marca si venció. Un proyecto vencido muestra un reloj tachado y,
+> al abrirlo, los desplegables quedan deshabilitados con un botón **"Cargar fuera de fecha"** que
+> rehabilita la carga y habilita **"Copiar fila para el Master Tracker"** (para que el propio AM la
+> pegue). El override es por tarjeta y por sesión (`overrideLate`).
 
 > **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34 columnas del
 > **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (19-34) usan su propio orden y
