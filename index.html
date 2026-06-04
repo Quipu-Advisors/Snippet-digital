@@ -144,8 +144,9 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .cs-leido{color:var(--text3)}
 .cs-rot{color:var(--green)}
 .cs-late{color:var(--red)}
-.late-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
-.late-msg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--red)}
+.late-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
+.late-msg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent)}
+.cs-clock{height:15px;width:auto;display:inline-block;vertical-align:middle}
 .late-btn{font-size:11px;font-weight:700;padding:5px 11px;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
 .late-btn:hover{background:var(--accent);color:#fff}
 .imp-select:disabled{opacity:.5;cursor:not-allowed;background:var(--bg);color:var(--text3)}
@@ -720,7 +721,7 @@ function cardHTML(p) {
     var parts = '';
     if (isRated) parts += '<span class="cs cs-rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado</span>';
     else if (isRead) parts += '<span class="cs cs-leido"><i class="ti ti-check" style="font-size:11px"></i> Leído</span>';
-    if (vencido) parts += '<span class="cs cs-late"><i class="ti ti-clock-x" style="font-size:11px"></i> Fuera de fecha</span>';
+    if (vencido) parts += '<img class="cs-clock" src="calendario.png" alt="Fuera de fecha" title="Fuera de fecha">';
     if (parts) h += '<div class="card-status">'+parts+'</div>';
   }
   h += '</div>'; // cinfo
@@ -744,7 +745,7 @@ function renderImp(pid) {
   var overdue = !!(p && isOverdue(p) && !overrideLate[pid]);   // corte vencido y aún no desbloqueado
   var unlocked = !!(p && isOverdue(p) && overrideLate[pid]);   // vencido pero el usuario lo desbloqueó
   var h = '<div class="impacts-section" onclick="event.stopPropagation()"><div class="impacts-title">Impacto por cliente</div>';
-  if (overdue) h += '<div class="late-banner"><span class="late-msg"><i class="ti ti-clock-x"></i> Fecha de corte vencida</span><button class="late-btn" onclick="unlockLate(\''+pid+'\')">Cargar fuera de fecha</button></div>';
+  if (overdue) h += '<div class="late-banner"><span class="late-msg"><img class="cs-clock" src="calendario.png" alt=""> Fuera de fecha</span><button class="late-btn" onclick="unlockLate(\''+pid+'\')">Cargar fuera de fecha</button></div>';
   h += '<div class="impacts-grid">';
   CLIENTS.forEach(function(c) {
     h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span>';
