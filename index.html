@@ -142,6 +142,15 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .card-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:7px}
 .card-status.leido{color:var(--text3)}
 .card-status.rot{color:var(--green)}
+.card-status.late{color:var(--red)}
+.cs-late-ic{color:var(--red);font-size:12px;vertical-align:middle}
+.late-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
+.late-msg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--red)}
+.late-btn{font-size:11px;font-weight:700;padding:5px 11px;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
+.late-btn:hover{background:var(--accent);color:#fff}
+.imp-select:disabled{opacity:.5;cursor:not-allowed;background:var(--bg);color:var(--text3)}
+.late-mt{margin-top:12px;display:flex;align-items:center;gap:10px}
+.late-mt .mt-ok{font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:4px}
 .card-nuevo{position:absolute;top:0;right:0;background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:0 8px 0 8px}
 .cresumen{font-size:14px;color:var(--text2);line-height:1.55}
 .cautor{font-size:12px;color:var(--text);font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:5px}
@@ -333,6 +342,7 @@ function setRepDate(v) { filterDate = v || ''; renderList(); }
 function clearRepDate() { filterDate = ''; var el=document.getElementById('rep-date'); if(el) el.value=''; renderList(); }
 var searchQ = '';
 function setSearch(v) { searchQ = v || ''; renderList(); }
+var overrideLate = {};  // por tarjeta: el usuario clickeó "Cargar fuera de fecha" (sesión)
 // "Leído" por usuario (qué proyectos abrió), persistido en el navegador.
 function loadReadSet() { readSet = {}; try { (JSON.parse(localStorage.getItem('sd_read_'+(currentUser||''))||'[]')).forEach(function(id){ readSet[String(id)]=1; }); } catch(e) {} }
 function markRead(id) { id=String(id); if(readSet[id]) return; readSet[id]=1; try { localStorage.setItem('sd_read_'+(currentUser||''), JSON.stringify(Object.keys(readSet))); } catch(e) {} }
@@ -391,6 +401,38 @@ function loadedToday(p) {
   if (!ms || ms < 1000000000000) return false;
   var d = new Date(ms), t = new Date();
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+}
+
+/* ============================================================
+   FECHAS DE CORTE — los acct managers deben rotular antes del próximo corte.
+   Configurable: días de la semana (0=Dom..6=Sáb; 2=Mar, 5=Vie) y hora.
+   ============================================================ */
+var CUTOFF_DOWS = [2, 5];   // martes y viernes
+var CUTOFF_HOUR = 12;        // 12:00
+// Deadline de un proyecto: el primer corte (Mar/Vie 12:00) posterior al día de reporte.
+function cutoffDeadline(repIso) {
+  if (!repIso) return null;
+  var pr = String(repIso).split('-'); if (pr.length !== 3) return null;
+  var c = new Date(parseInt(pr[0]), parseInt(pr[1])-1, parseInt(pr[2])+1, CUTOFF_HOUR, 0, 0, 0); // día siguiente al reporte
+  for (var i=0; i<14; i++) {
+    if (CUTOFF_DOWS.indexOf(c.getDay()) >= 0) return c;
+    c = new Date(c.getFullYear(), c.getMonth(), c.getDate()+1, CUTOFF_HOUR, 0, 0, 0);
+  }
+  return c;
+}
+function isOverdue(p) {
+  var dl = cutoffDeadline(p && p._d); if (!dl) return false;
+  return new Date().getTime() > dl.getTime();
+}
+function projectById(pid) { pid=String(pid); for (var i=0;i<PROJECTS.length;i++) if (String(PROJECTS[i].id)===pid) return PROJECTS[i]; return null; }
+function unlockLate(pid) { overrideLate[String(pid)]=1; renderList(); }
+function copyMtRow(pid) {
+  pid=String(pid); var p=projectById(pid); if(!p) return;
+  var sels={}; Object.keys(SELS).forEach(function(m){ sels[m]=SELS[m]; });
+  sels[currentUser]=Object.assign({}, SELS[currentUser]||{}); sels[currentUser][pid]={impacts:localImp[pid]||{}};
+  var row=buildRows([p], sels);
+  var ok=function(){ var e=document.getElementById('mtok-'+pid); if(e){ e.style.display='inline'; setTimeout(function(){e.style.display='none';},2200); } };
+  try { navigator.clipboard.writeText(row).then(ok).catch(function(){ fallbackCopy(row, ok); }); } catch(e) { fallbackCopy(row, ok); }
 }
 function mapOrg(org) {
   var l = (org||'').toLowerCase();
@@ -524,7 +566,7 @@ function renderLogin() {
 function teamLogout() { setGatePassed(false); renderGate(); }
 
 function login(name) {
-  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {}; filterDate = ''; searchQ = '';
+  currentUser = name; viewDate = isoToday(); localSel = {}; localImp = {}; expanded = {}; filterDate = ''; searchQ = ''; overrideLate = {};
   // Cada vista (mgr/adm/consolidado) carga sus propios datos al renderizarse.
   buildNav(); switchTab(isResearch(currentUser) ? 'adm' : 'mgr');
   maybeShowWelcome();
@@ -647,6 +689,8 @@ function cardHTML(p) {
   var otherImps = getOtherImpacts(id);
   var lx = safeUrl(p.linkExpediente), lt = safeUrl(p.linkTexto);
   var nuevo = loadedToday(p);
+  var vencido = isOverdue(p);
+  var clk = vencido ? ' <i class="ti ti-clock-x cs-late-ic" title="Fecha de corte vencida"></i>' : '';
 
   var h = '<div class="card'+(isExp?' sel':'')+(isRated&&!isExp?' rated':'')+(isRead&&!isExp?' read':'')+(nuevo?' nuevo':'')+'" onclick="toggleCard(\''+id+'\',event)">';
   if (nuevo) h += '<span class="card-nuevo">Nuevo</span>';
@@ -673,8 +717,9 @@ function cardHTML(p) {
     if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     if (otherImps.length) h += '<span class="others-mark" title="'+otherImps.length+' calificación(es) de otros managers"><i class="ti ti-users" style="font-size:11px"></i> '+otherImps.length+'</span>';
     h += '</div>';
-    if (isRated) h += '<div class="card-status rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado</div>';
-    else if (isRead) h += '<div class="card-status leido"><i class="ti ti-check" style="font-size:11px"></i> Leído</div>';
+    if (isRated) h += '<div class="card-status rot"><i class="ti ti-tag" style="font-size:11px"></i> Rotulado'+clk+'</div>';
+    else if (isRead) h += '<div class="card-status leido"><i class="ti ti-check" style="font-size:11px"></i> Leído'+clk+'</div>';
+    else if (vencido) h += '<div class="card-status late"><i class="ti ti-clock-x" style="font-size:11px"></i> Fuera de fecha</div>';
   }
   h += '</div>'; // cinfo
 
@@ -693,15 +738,25 @@ function cardHTML(p) {
 function renderImp(pid) {
   pid = String(pid); initImp(pid);
   var imp = localImp[pid];
-  var h = '<div class="impacts-section" onclick="event.stopPropagation()"><div class="impacts-title">Impacto por cliente</div><div class="impacts-grid">';
+  var p = projectById(pid);
+  var overdue = !!(p && isOverdue(p) && !overrideLate[pid]);   // corte vencido y aún no desbloqueado
+  var unlocked = !!(p && isOverdue(p) && overrideLate[pid]);   // vencido pero el usuario lo desbloqueó
+  var h = '<div class="impacts-section" onclick="event.stopPropagation()"><div class="impacts-title">Impacto por cliente</div>';
+  if (overdue) h += '<div class="late-banner"><span class="late-msg"><i class="ti ti-clock-x"></i> Fecha de corte vencida</span><button class="late-btn" onclick="unlockLate(\''+pid+'\')">Cargar fuera de fecha</button></div>';
+  h += '<div class="impacts-grid">';
   CLIENTS.forEach(function(c) {
     h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span>';
     var lock = clientLock(pid, c);
+    var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
     if (lock) {
       // Ya lo calificó otra persona: bloqueado, con su nombre al lado.
       h += '<span class="imp-locked" title="Calificado por '+esc(lock.name)+'"><span class="imp-locked-badge" style="'+impactBadgeStyle(lock.level)+'">'+esc(lock.level)+'</span><span class="imp-locked-name">'+esc(lock.name)+'</span></span>';
+    } else if (overdue) {
+      // Corte vencido: desplegable gris y anulado.
+      h += '<select class="imp-select '+cls+'" disabled>';
+      IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
+      h += '</select>';
     } else {
-      var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
       var cj = c.replace(/'/g,"\\'");
       h += '<select class="imp-select '+cls+'" onchange="setImp(\''+pid+'\',\''+cj+'\',this.value);colorSel(this)">';
       IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
@@ -709,7 +764,9 @@ function renderImp(pid) {
     }
     h += '</div>';
   });
-  h += '</div></div>'; return h;
+  h += '</div>';
+  if (unlocked) h += '<div class="late-mt"><button class="btn" onclick="copyMtRow(\''+pid+'\')"><i class="ti ti-copy"></i> Copiar fila para el Master Tracker</button><span class="mt-ok" id="mtok-'+pid+'" style="display:none"><i class="ti ti-check"></i> Copiado</span></div>';
+  h += '</div>'; return h;
 }
 
 // Devuelve {name, level} si OTRO manager ya calificó este cliente (queda bloqueado), o null.
