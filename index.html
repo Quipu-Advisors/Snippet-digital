@@ -93,7 +93,10 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .tb-search:focus-within{border-color:var(--blue)}
 .tb-search i{color:var(--text3);font-size:15px;flex-shrink:0}
 .tb-search input{border:none;outline:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);width:220px;max-width:40vw}
-.tb-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
+.tb-countdown{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
+.tb-countdown.urgent{color:var(--red)}
+.tb-countdown:empty{display:none}
+.tb-toggle{margin-left:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
 .hoy-nuevos{color:var(--accent);font-weight:700;font-size:15px;margin-left:auto}
 .tb-toggle input{display:none}
 .tb-switch{width:34px;height:18px;border-radius:20px;background:var(--border);position:relative;transition:background .15s;flex-shrink:0}
@@ -426,6 +429,24 @@ function isOverdue(p) {
   var dl = cutoffDeadline(p && p._d); if (!dl) return false;
   return new Date().getTime() > dl.getTime();
 }
+// Próximo corte (Mar/Vie 12:00) estrictamente posterior a 'now'.
+function nextCutoff(now) {
+  var c = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CUTOFF_HOUR, 0, 0, 0);
+  for (var i=0; i<14; i++) {
+    if (CUTOFF_DOWS.indexOf(c.getDay()) >= 0 && c.getTime() > now.getTime()) return c;
+    c = new Date(c.getFullYear(), c.getMonth(), c.getDate()+1, CUTOFF_HOUR, 0, 0, 0);
+  }
+  return c;
+}
+function updateCountdown() {
+  var el = document.getElementById('countdown'); if (!el) return;
+  var ms = nextCutoff(new Date()).getTime() - Date.now();
+  if (ms <= 0) { el.textContent=''; return; }
+  var mins = Math.floor(ms/60000), d = Math.floor(mins/1440), h = Math.floor((mins%1440)/60), m = mins%60;
+  var t = (d? d+'d ':'') + ((h||d)? h+'h ':'') + m+'m';
+  el.innerHTML = '<img class="cs-clock" src="calendario.png" alt=""> Próximo corte en ' + t;
+  el.className = 'tb-countdown' + (mins < 360 ? ' urgent' : '');
+}
 function projectById(pid) { pid=String(pid); for (var i=0;i<PROJECTS.length;i++) if (String(PROJECTS[i].id)===pid) return PROJECTS[i]; return null; }
 function unlockLate(pid) { overrideLate[String(pid)]=1; renderList(); }
 function copyMtRow(pid) {
@@ -610,13 +631,14 @@ async function renderManager(container) {
   h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
   h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
+  h += '<span class="tb-countdown" id="countdown"></span>';
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
   h += '<div class="list" id="list"></div>';
   h += '<div class="footer"><div class="footer-top"><span class="footer-info" id="finfo"></span>';
   h += '<span class="save-status" id="save-status"><i class="ti ti-cloud"></i> Se guarda automáticamente</span></div></div>';
   container.innerHTML = h;
-  buildFilters(); applyFilterPrefs(); renderList(); updateFinfo();
+  buildFilters(); applyFilterPrefs(); renderList(); updateFinfo(); updateCountdown();
 }
 
 function buildFilters() {
@@ -1174,6 +1196,7 @@ async function clearDayProjects() {
 function init() {
   buildNav();
   if (gatePassed()) renderLogin(); else renderGate();
+  setInterval(updateCountdown, 30000);
 }
 init();
 </script>
