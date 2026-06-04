@@ -93,9 +93,11 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .tb-search:focus-within{border-color:var(--blue)}
 .tb-search i{color:var(--text3);font-size:15px;flex-shrink:0}
 .tb-search input{border:none;outline:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);width:220px;max-width:40vw}
-.tb-countdown{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
+.tb-countdown{position:relative;margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap;cursor:default}
 .tb-countdown.urgent{color:var(--red)}
 .tb-countdown:empty{display:none}
+.cd-tip{display:none;position:absolute;top:150%;right:0;z-index:50;width:260px;white-space:normal;background:#fff;color:var(--blue);font-size:12px;font-weight:400;line-height:1.4;padding:10px 12px;border:1px solid var(--accent-border,#e0cdc0);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.tb-countdown:hover .cd-tip{display:block}
 .tb-toggle{margin-left:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0}
 .hoy-nuevos{color:var(--accent);font-weight:700;font-size:15px;margin-left:auto}
 .tb-toggle input{display:none}
@@ -438,13 +440,20 @@ function nextCutoff(now) {
   }
   return c;
 }
+function cutoffLong(d) {
+  var dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return dias[d.getDay()]+' '+d.getDate()+' de '+meses[d.getMonth()];
+}
 function updateCountdown() {
   var el = document.getElementById('countdown'); if (!el) return;
-  var ms = nextCutoff(new Date()).getTime() - Date.now();
+  var nc = nextCutoff(new Date());
+  var ms = nc.getTime() - Date.now();
   if (ms <= 0) { el.textContent=''; return; }
   var mins = Math.floor(ms/60000), d = Math.floor(mins/1440), h = Math.floor((mins%1440)/60), m = mins%60;
   var t = (d? d+'d ':'') + ((h||d)? h+'h ':'') + m+'m';
-  el.innerHTML = '<img class="cs-clock" src="calendario.png" alt=""> Próximo corte en ' + t;
+  var tip = 'Recordá revisar los proyectos nuevos y marcar su impacto antes del ' + cutoffLong(nc) + ' a las ' + (CUTOFF_HOUR<10?'0':'') + CUTOFF_HOUR + ':00.';
+  el.innerHTML = '<img class="cs-clock" src="calendario.png" alt=""> Próximo corte en ' + t + '<span class="cd-tip">' + esc(tip) + '</span>';
   el.className = 'tb-countdown' + (mins < 360 ? ' urgent' : '');
 }
 function projectById(pid) { pid=String(pid); for (var i=0;i<PROJECTS.length;i++) if (String(PROJECTS[i].id)===pid) return PROJECTS[i]; return null; }
