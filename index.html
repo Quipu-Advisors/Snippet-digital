@@ -481,9 +481,10 @@ function helpMulita() {
     + '<div class="help-intro">Los proyectos se visualizan según el orden cronológico en que fueron reportados.</div>'
     + '<ol class="help-steps">'
     + '<li>El toggle <b>“Solo reportados hoy”</b> muestra lo nuevo del día; el tag <b>NUEVO</b> marca lo cargado hoy.</li>'
-    + '<li>Si querés, filtrá por <b>Sector / Jurisdicción</b>. Tus filtros quedan recordados.</li>'
+    + '<li>Acotá con la <b>barra de búsqueda</b> o los filtros de <b>Sector / Jurisdicción</b> (quedan recordados).</li>'
     + '<li>Hacé <b>clic en un proyecto</b> para abrirlo y leer el detalle (resumen, autor, texto).</li>'
     + '<li>Cargá el <b>impacto por cliente</b> en los desplegables (Alto / Medio / Bajo / N/A). <b>Se guarda solo.</b></li>'
+    + '<li>Hay <b>cortes los martes y viernes 12:00</b> (mirá el contador arriba). Lo vencido se bloquea; con <b>“Cargar fuera de fecha”</b> lo rehabilitás y copiás la fila para el Master Tracker.</li>'
     + '</ol>'
     + '</div></span>';
 }
@@ -504,10 +505,11 @@ function maybeShowWelcome() {
     + '<p class="welcome-lead">Todos los proyectos reportados quedarán guardados en esta plataforma, por lo que también podrán usarla como registro histórico usando la barra de búsqueda o el filtro por fecha.</p>'
     + '<ol class="welcome-steps">'
     + '<li>La lista muestra <b>todos los proyectos</b>, ordenados por <b>fecha de reporte</b> (lo más nuevo arriba). El tag <b>NUEVO</b> y el toggle <b>“Solo reportados hoy”</b> te enfocan en lo del día.</li>'
-    + '<li>Filtrá por <b>Sector</b> y <b>Jurisdicción</b> para acotar (tus filtros quedan recordados), o elegí una <b>fecha de reporte</b> puntual.</li>'
+    + '<li>Acotá con la <b>barra de búsqueda</b> (título, autor, número), con los filtros de <b>Sector</b> y <b>Jurisdicción</b> (quedan recordados), o eligiendo una <b>fecha de reporte</b> puntual.</li>'
     + '<li>Hacé <b>clic en un proyecto</b> para abrirlo: vas a ver el resumen, el <b>autor/partido</b>, el organismo y el link al texto.</li>'
     + '<li>Cargá el <b>impacto por cliente</b> en los desplegables (Alto / Medio / Bajo / N/A). <b>Se guarda solo</b> — no hay botón de guardar.</li>'
     + '<li>Lo que ya abriste queda como <b>Leído</b> (atenuado) y lo que calificaste, como <b>Rotulado</b>. Si un cliente ya lo calificó otra persona, queda fijo con su nombre.</li>'
+    + '<li>Hay <b>fechas de corte</b> los <b>martes y viernes 12:00</b> — arriba a la derecha tenés el contador hasta el próximo. Lo vencido se bloquea (ícono de reloj); si necesitás, <b>“Cargar fuera de fecha”</b> lo rehabilita y te deja copiar la fila para el Master Tracker.</li>'
     + '</ol>'
     + '<button class="btn primary welcome-go" onclick="closeWelcome()">Empezar</button>'
     + '</div></div>';
