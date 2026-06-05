@@ -417,12 +417,14 @@ function loadedToday(p) {
    ============================================================ */
 var CUTOFF_DOWS = [2, 5];   // martes y viernes
 var CUTOFF_HOUR = 12;        // 12:00
-// Deadline de un proyecto: el PRIMER corte (Mar/Vie 12:00) en o después del día de reporte.
-// Ej.: reportado martes -> vence ese martes 12:00; reportado miércoles/jueves -> vence el viernes 12:00.
+// Deadline de un proyecto: el PRIMER corte (Mar/Vie 12:00) ESTRICTAMENTE POSTERIOR al día de reporte.
+// No cuenta el corte del propio día de carga (si no, lo cargado un viernes a la tarde vencería al instante).
+// Ej.: reportado viernes -> vence el martes 12:00; reportado martes -> vence el viernes 12:00;
+//      reportado miércoles/jueves -> vence el viernes 12:00; reportado lunes -> vence el martes 12:00.
 function cutoffDeadline(repIso) {
   if (!repIso) return null;
   var pr = String(repIso).split('-'); if (pr.length !== 3) return null;
-  var c = new Date(parseInt(pr[0]), parseInt(pr[1])-1, parseInt(pr[2]), CUTOFF_HOUR, 0, 0, 0); // mismo día de reporte, 12:00
+  var c = new Date(parseInt(pr[0]), parseInt(pr[1])-1, parseInt(pr[2])+1, CUTOFF_HOUR, 0, 0, 0); // día SIGUIENTE al reporte, 12:00
   for (var i=0; i<14; i++) {
     if (CUTOFF_DOWS.indexOf(c.getDay()) >= 0) return c;
     c = new Date(c.getFullYear(), c.getMonth(), c.getDate()+1, CUTOFF_HOUR, 0, 0, 0);

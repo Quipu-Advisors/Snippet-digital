@@ -67,8 +67,11 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Cambiar los **días/hora de corte** | constantes `CUTOFF_DOWS` (0=Dom..6=Sáb; default `[2,5]`=Mar/Vie) y `CUTOFF_HOUR` (default 12) |
 
 > **Fechas de corte:** para evitar backlog, cada proyecto debe rotularse antes del próximo corte
-> (Mar/Vie 12:00 por defecto). `cutoffDeadline(_d)` calcula el deadline (primer corte posterior al
-> día de reporte) e `isOverdue(p)` marca si venció. Un proyecto vencido muestra un reloj tachado y,
+> (Mar/Vie 12:00 por defecto). `cutoffDeadline(_d)` calcula el deadline = primer corte
+> **estrictamente posterior** al día de reporte (NO cuenta el corte del propio día de carga, si no
+> lo cargado un viernes a la tarde vencería al instante). Ej.: reportado viernes → vence el martes;
+> reportado martes/miércoles/jueves → vence el viernes; reportado lunes → vence el martes.
+> `isOverdue(p)` marca si venció. Un proyecto vencido muestra un reloj tachado y,
 > al abrirlo, los desplegables quedan deshabilitados con un botón **"Cargar fuera de fecha"** que
 > rehabilita la carga y habilita **"Copiar fila para el Master Tracker"** (para que el propio AM la
 > pegue). El override es por tarjeta y por sesión (`overrideLate`).
