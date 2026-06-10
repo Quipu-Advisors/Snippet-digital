@@ -167,14 +167,13 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .impacts-title{font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .impacts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 22px}
 .imp-item{display:flex;align-items:center;gap:8px;min-width:0}
+.imp-ctrl{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .imp-label{width:116px;flex:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.imp-select{font-size:11px;height:24px;padding:0 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);flex-shrink:0;min-width:62px}
+.imp-select{font-size:11px;height:24px;padding:0 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);min-width:62px;width:100%}
 .imp-select.alto{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-weight:600}
 .imp-select.medio{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border);font-weight:600}
 .imp-select.bajo{background:var(--green-bg);color:var(--green);border-color:var(--green-border);font-weight:600}
-.imp-locked{display:inline-flex;align-items:center;gap:5px;flex:1;min-width:0}
-.imp-locked-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0}
-.imp-locked-name{font-size:10px;color:var(--text3);font-weight:500;white-space:normal;line-height:1.2}
+.imp-by{font-size:9px;color:var(--text3);font-weight:500;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
 .clink{font-size:11px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
 .cimpact{flex-shrink:0;border-left:1px solid var(--border-light);padding-left:14px;min-width:140px;max-width:180px}
 .cimpact.wide{flex:0 0 46%;max-width:46%;min-width:400px}
@@ -345,7 +344,7 @@ var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema
 var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
-var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, expanded = {}, readSet = {}, onlyToday = false, filterDate = '', saveTimer = null;
+var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, localImpTs = {}, expanded = {}, readSet = {}, onlyToday = false, filterDate = '', saveTimer = null;
 function setRepDate(v) { filterDate = v || ''; renderList(); }
 function clearRepDate() { filterDate = ''; var el=document.getElementById('rep-date'); if(el) el.value=''; renderList(); }
 var searchQ = '';
@@ -465,7 +464,7 @@ function unlockLate(pid) { overrideLate[String(pid)]=1; renderList(); }
 function copyMtRow(pid) {
   pid=String(pid); var p=projectById(pid); if(!p) return;
   var sels={}; Object.keys(SELS).forEach(function(m){ sels[m]=SELS[m]; });
-  sels[currentUser]=Object.assign({}, SELS[currentUser]||{}); sels[currentUser][pid]={impacts:localImp[pid]||{}};
+  sels[currentUser]=Object.assign({}, SELS[currentUser]||{}); sels[currentUser][pid]={impacts:localImp[pid]||{}, impTs:localImpTs[pid]||{}, ts:Date.now()};
   var row=buildRows([p], sels);
   var ok=function(){ var e=document.getElementById('mtok-'+pid); if(e){ e.style.display='inline'; setTimeout(function(){e.style.display='none';},2200); } };
   try { navigator.clipboard.writeText(row).then(ok).catch(function(){ fallbackCopy(row, ok); }); } catch(e) { fallbackCopy(row, ok); }
@@ -611,10 +610,12 @@ function login(name) {
 }
 // Carga lo que YA calificó el manager (queda "marcado", colapsado por defecto).
 function loadLocalFromSels() {
-  localSel = {}; localImp = {}; expanded = {};
+  localSel = {}; localImp = {}; localImpTs = {}; expanded = {};
   if (SELS[currentUser]) { Object.keys(SELS[currentUser]).forEach(function(pid){
-    var imp = SELS[currentUser][pid].impacts || {};
+    var entry = SELS[currentUser][pid] || {};
+    var imp = entry.impacts || {};
     localImp[pid] = imp;
+    localImpTs[pid] = entry.impTs || {};
     // "Rotulado" solo si tiene al menos un impacto real (≠ "-")
     if (CLIENTS.some(function(c){ return imp[c] && imp[c]!=='-'; })) localSel[pid] = true;
   }); }
@@ -698,6 +699,22 @@ document.addEventListener('click', function(){ var sm=document.getElementById('d
 
 function initImp(id) { id=String(id); if (!localImp[id]) { localImp[id]={}; CLIENTS.forEach(function(c){localImp[id][c]='-';}); } }
 
+// Todas las calificaciones de un cliente en un proyecto, ordenadas por antigüedad (más viejo → más nuevo).
+// El último es el vigente ("la última corrección gana"). Incluye al usuario actual (vía localImp).
+function clientRatings(pid, client) {
+  pid = String(pid); var out = [];
+  Object.keys(SELS).forEach(function(m){
+    if (m === currentUser) return;
+    var e = SELS[m] && SELS[m][pid]; if (!e || !e.impacts) return;
+    var v = e.impacts[client];
+    if (v && v !== '-') out.push({name: m, level: v, ts: (e.impTs && e.impTs[client]) || e.ts || 0});
+  });
+  var cv = localImp[pid] && localImp[pid][client];
+  if (cv && cv !== '-') out.push({name: currentUser, level: cv, ts: (localImpTs[pid] && localImpTs[pid][client]) || 0});
+  out.sort(function(a,b){ return (a.ts||0) - (b.ts||0); });
+  return out;
+}
+
 function getOtherImpacts(pid) {
   pid = String(pid);
   var results = [];
@@ -777,7 +794,6 @@ function cardHTML(p) {
 
 function renderImp(pid) {
   pid = String(pid); initImp(pid);
-  var imp = localImp[pid];
   var p = projectById(pid);
   var overdue = !!(p && isOverdue(p) && !overrideLate[pid]);   // corte vencido y aún no desbloqueado
   var unlocked = !!(p && isOverdue(p) && overrideLate[pid]);   // vencido pero el usuario lo desbloqueó
@@ -785,45 +801,39 @@ function renderImp(pid) {
   if (overdue) h += '<div class="late-banner"><span class="late-msg"><img class="cs-clock" src="calendario.png" alt=""> Fuera de fecha</span><button class="late-btn" onclick="unlockLate(\''+pid+'\')">Cargar fuera de fecha</button></div>';
   h += '<div class="impacts-grid">';
   CLIENTS.forEach(function(c) {
-    h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span>';
-    var lock = clientLock(pid, c);
-    var v = imp[c]||'-'; var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
-    if (lock) {
-      // Ya lo calificó otra persona: bloqueado, con su nombre al lado.
-      h += '<span class="imp-locked" title="Calificado por '+esc(lock.name)+'"><span class="imp-locked-badge" style="'+impactBadgeStyle(lock.level)+'">'+esc(lock.level)+'</span><span class="imp-locked-name">'+esc(lock.name)+'</span></span>';
-    } else if (overdue) {
+    var ratings = clientRatings(pid, c);
+    var v = ratings.length ? ratings[ratings.length-1].level : '-';   // vigente = última corrección
+    var cls = v==='Alto'?'alto':v==='Medio'?'medio':v==='Bajo'?'bajo':'';
+    // Cadena de nombres (ej.: "Carolina - Hernán"). No la muestro si el único que calificó soy yo.
+    var byline = '';
+    if (ratings.length && !(ratings.length===1 && ratings[0].name===currentUser)) {
+      var names = ratings.map(function(r){ return r.name; }).join(' - ');
+      byline = '<span class="imp-by" title="'+esc(names)+'">'+esc(names)+'</span>';
+    }
+    var cj = c.replace(/'/g,"\\'");
+    h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span><div class="imp-ctrl">';
+    if (overdue) {
       // Corte vencido: desplegable gris y anulado.
       h += '<select class="imp-select '+cls+'" disabled>';
       IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
       h += '</select>';
     } else {
-      var cj = c.replace(/'/g,"\\'");
       h += '<select class="imp-select '+cls+'" onchange="setImp(\''+pid+'\',\''+cj+'\',this.value);colorSel(this)">';
       IMPACT.forEach(function(o){ h += '<option'+(v===o?' selected':'')+'>'+o+'</option>'; });
       h += '</select>';
     }
-    h += '</div>';
+    h += byline + '</div></div>';
   });
   h += '</div>';
   if (unlocked) h += '<div class="late-mt"><button class="btn" onclick="copyMtRow(\''+pid+'\')"><i class="ti ti-copy"></i> Copiar fila para el Master Tracker</button><span class="mt-ok" id="mtok-'+pid+'" style="display:none"><i class="ti ti-check"></i> Copiado</span></div>';
   h += '</div>'; return h;
 }
 
-// Devuelve {name, level} si OTRO manager ya calificó este cliente (queda bloqueado), o null.
-function clientLock(pid, client) {
-  pid = String(pid); var found = null;
-  Object.keys(SELS).forEach(function(m) {
-    if (m === currentUser || found) return;
-    var s = SELS[m]; if (!s[pid] || !s[pid].impacts) return;
-    var v = s[pid].impacts[client];
-    if (v && v !== '-') found = {name: m, level: v};
-  });
-  return found;
-}
-
 function colorSel(el) { el.className = 'imp-select '+(el.value==='Alto'?'alto':el.value==='Medio'?'medio':el.value==='Bajo'?'bajo':''); }
 function setImp(pid,client,val) {
   pid=String(pid); initImp(pid); localImp[pid][client]=val;
+  if (!localImpTs[pid]) localImpTs[pid]={};
+  localImpTs[pid][client]=Date.now();   // sello por cliente: la última corrección gana
   // "Calificado" = tiene al menos un impacto != '-'
   var rated = CLIENTS.some(function(c){ return localImp[pid][c] && localImp[pid][c]!=='-'; });
   if (rated) localSel[pid]=true; else delete localSel[pid];
@@ -927,7 +937,7 @@ function setSaveStatus(state) {
 }
 function scheduleSave() { setSaveStatus('saving'); clearTimeout(saveTimer); saveTimer=setTimeout(commitSave, 600); }
 function commitSave() {
-  var sd={}; Object.keys(localSel).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, ts:Date.now()}; });
+  var sd={}; Object.keys(localSel).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, impTs:localImpTs[pid]||{}, ts:Date.now()}; });
   SELS[currentUser]=sd;
   dbSaveSelectionAll(currentUser,sd).then(function(){ setSaveStatus('saved'); }).catch(function(){ setSaveStatus('error'); });
 }
@@ -1010,9 +1020,21 @@ async function clearMgrSel(name) {
   hideOverlay(); renderConsolidado(document.getElementById('app'));
 }
 
+// Consolida tomando la ÚLTIMA corrección (mayor timestamp por cliente) entre todos los managers.
 function mergeImpacts(pids,sels) {
-  var order={'-':0,'N/A':1,'Bajo':2,'Medio':3,'Alto':4}; var merged={};
-  pids.forEach(function(pid){ pid=String(pid); merged[pid]={}; CLIENTS.forEach(function(c){ var best='-'; Object.values(sels).forEach(function(sel){var v=(sel[pid]&&sel[pid].impacts&&sel[pid].impacts[c])||'-';if((order[v]||0)>(order[best]||0))best=v;}); merged[pid][c]=best; }); });
+  var merged={};
+  pids.forEach(function(pid){ pid=String(pid); merged[pid]={};
+    CLIENTS.forEach(function(c){
+      var best='-', bestTs=-1;
+      Object.values(sels).forEach(function(sel){
+        var e=sel[pid]; if(!e||!e.impacts) return;
+        var v=e.impacts[c]; if(!v||v==='-') return;
+        var ts=(e.impTs&&e.impTs[c]!=null)?e.impTs[c]:(e.ts||0);
+        if(ts>=bestTs){ bestTs=ts; best=v; }
+      });
+      merged[pid][c]=best;
+    });
+  });
   return merged;
 }
 

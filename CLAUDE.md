@@ -99,7 +99,7 @@ Notas:
 2. **Cada manager** abre la app, elige su nombre, filtra (sector/jurisdicción) y **califica** el
    impacto por cliente. Su selección y filtros quedan recordados.
 3. **Research** revisa en "Consolidado" y usa **"Copiar todo para Sheets"** para volcar al master
-   tracker (toma el impacto más alto entre managers como definitivo).
+   tracker (toma la última corrección (el valor más reciente por cliente) entre managers como definitivo).
 
 ---
 
@@ -148,9 +148,12 @@ destaque **"Nuevo"** (cargado hoy).
   **hoy** (según el timestamp del `id`). Función `loadedToday(p)`.
 - **Filtros recordados por manager:** sector + jurisdicción + toggle "Solo reportados hoy" se guardan
   en `localStorage` del navegador, por nombre. Funciones `saveFilterPrefs` / `applyFilterPrefs`.
-- **Bloqueo de impacto por cliente:** cuando alguien califica un cliente en un proyecto, ese dropdown
-  queda fijo para el resto, con el nombre de quien lo marcó. Función `clientLock(pid, client)`.
-  (Es un bloqueo "blando": se basa en lo cargado al abrir; no es tiempo real estricto.)
+- **Impacto por cliente — editable y corregible (sin bloqueo):** el desplegable de cada cliente
+  queda **abierto para todos**. Muestra siempre el **valor vigente = la última corrección** (mayor
+  timestamp por cliente). Si otro manager lo corrige, su valor pisa al anterior y se muestra la
+  **cadena de nombres** debajo del desplegable (ej.: "Carolina - Hernán", del que calificó primero al
+  más reciente). Cada cambio sella un timestamp **por cliente** (`localImpTs` → `impTs` en la fila del
+  manager). El vigente y la cadena los calcula `clientRatings(pid, client)`.
 - **Consolidado:** filas de proyecto expandibles (detalle de solo lectura). Export a Sheets toma el
   impacto más alto entre managers.
 
