@@ -701,16 +701,22 @@ function initImp(id) { id=String(id); if (!localImp[id]) { localImp[id]={}; CLIE
 
 // Todas las calificaciones de un cliente en un proyecto, ordenadas por antigüedad (más viejo → más nuevo).
 // El último es el vigente ("la última corrección gana"). Incluye al usuario actual (vía localImp).
+// Un "-" CON timestamp propio es un borrado deliberado: cuenta como corrección y pisa el valor
+// anterior. Un "-" SIN timestamp (default / datos viejos) significa "sin calificar" y se ignora.
 function clientRatings(pid, client) {
   pid = String(pid); var out = [];
   Object.keys(SELS).forEach(function(m){
     if (m === currentUser) return;
     var e = SELS[m] && SELS[m][pid]; if (!e || !e.impacts) return;
     var v = e.impacts[client];
-    if (v && v !== '-') out.push({name: m, level: v, ts: (e.impTs && e.impTs[client]) || e.ts || 0});
+    var hasTs = !!(e.impTs && e.impTs[client] != null);
+    if (v && v !== '-') out.push({name: m, level: v, ts: hasTs ? e.impTs[client] : (e.ts || 0)});
+    else if (hasTs) out.push({name: m, level: '-', ts: e.impTs[client]});
   });
   var cv = localImp[pid] && localImp[pid][client];
-  if (cv && cv !== '-') out.push({name: currentUser, level: cv, ts: (localImpTs[pid] && localImpTs[pid][client]) || 0});
+  var myTs = localImpTs[pid] && localImpTs[pid][client];
+  if (cv && cv !== '-') out.push({name: currentUser, level: cv, ts: myTs || 0});
+  else if (myTs != null) out.push({name: currentUser, level: '-', ts: myTs});
   out.sort(function(a,b){ return (a.ts||0) - (b.ts||0); });
   return out;
 }
@@ -937,7 +943,12 @@ function setSaveStatus(state) {
 }
 function scheduleSave() { setSaveStatus('saving'); clearTimeout(saveTimer); saveTimer=setTimeout(commitSave, 600); }
 function commitSave() {
-  var sd={}; Object.keys(localSel).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, impTs:localImpTs[pid]||{}, ts:Date.now()}; });
+  // Guarda los proyectos rotulados Y los que solo tienen borrados deliberados (impTs sin valores),
+  // para que "corregir a -" también persista y pueda pisar la calificación de otro manager.
+  var pids={};
+  Object.keys(localSel).forEach(function(pid){ pids[pid]=1; });
+  Object.keys(localImpTs).forEach(function(pid){ if (Object.keys(localImpTs[pid]||{}).length) pids[pid]=1; });
+  var sd={}; Object.keys(pids).forEach(function(pid){ sd[pid]={impacts:localImp[pid]||{}, impTs:localImpTs[pid]||{}, ts:Date.now()}; });
   SELS[currentUser]=sd;
   dbSaveSelectionAll(currentUser,sd).then(function(){ setSaveStatus('saved'); }).catch(function(){ setSaveStatus('error'); });
 }
@@ -1021,6 +1032,7 @@ async function clearMgrSel(name) {
 }
 
 // Consolida tomando la ÚLTIMA corrección (mayor timestamp por cliente) entre todos los managers.
+// Un "-" con timestamp propio es un borrado deliberado y también compite (puede ganar y anular).
 function mergeImpacts(pids,sels) {
   var merged={};
   pids.forEach(function(pid){ pid=String(pid); merged[pid]={};
@@ -1028,9 +1040,11 @@ function mergeImpacts(pids,sels) {
       var best='-', bestTs=-1;
       Object.values(sels).forEach(function(sel){
         var e=sel[pid]; if(!e||!e.impacts) return;
-        var v=e.impacts[c]; if(!v||v==='-') return;
-        var ts=(e.impTs&&e.impTs[c]!=null)?e.impTs[c]:(e.ts||0);
-        if(ts>=bestTs){ bestTs=ts; best=v; }
+        var v=e.impacts[c];
+        var hasTs=!!(e.impTs&&e.impTs[c]!=null);
+        if((!v||v==='-')&&!hasTs) return;   // sin calificación ni borrado deliberado
+        var ts=hasTs?e.impTs[c]:(e.ts||0);
+        if(ts>=bestTs){ bestTs=ts; best=(v&&v!=='-')?v:'-'; }
       });
       merged[pid][c]=best;
     });

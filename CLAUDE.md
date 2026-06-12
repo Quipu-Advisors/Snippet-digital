@@ -154,6 +154,10 @@ destaque **"Nuevo"** (cargado hoy).
   **cadena de nombres** debajo del desplegable (ej.: "Carolina - Hernán", del que calificó primero al
   más reciente). Cada cambio sella un timestamp **por cliente** (`localImpTs` → `impTs` en la fila del
   manager). El vigente y la cadena los calcula `clientRatings(pid, client)`.
+  **Corregir a "-" también vale:** un "-" con timestamp propio es un borrado deliberado y pisa el
+  valor anterior (en pantalla y en el consolidado). Un "-" sin timestamp (default / datos viejos)
+  significa "sin calificar" y se ignora — por eso las filas viejas no borran nada. `commitSave`
+  persiste también los proyectos cuyo único contenido es un borrado (impTs sin valores).
 - **Consolidado:** filas de proyecto expandibles (detalle de solo lectura). Export a Sheets toma el
   impacto más alto entre managers.
 
