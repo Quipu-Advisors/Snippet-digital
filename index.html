@@ -332,7 +332,7 @@ async function dbSaveSelectionAll(m, data) {
 var SECTORES = ['Coyuntura general','Consumo masivo','Medios de pago','Tecnologia','Automotriz','Agroindustria','Petroquimicos','Mineria','Turismo','Salud','Ambiente'];
 var PROVINCIAS = ['CABA','Buenos Aires','Catamarca','Chaco','Chubut','Cordoba','Corrientes','Entre Rios','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquen','Rio Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucuman'];
 var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']);
-var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow'];
+var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow','Renault','BMW'];
 var IMPACT = ['-','Alto','Medio','Bajo','N/A'];
 var RESEARCH = ['Camila','Victoria','Lucas MS'];
 var PUBLIC_AFFAIRS = ['Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros','Nicolás','Federico','Lucas B','Shunko'];
@@ -962,10 +962,15 @@ async function renderConsolidado(container) {
   try { SELS = await dbGetAllSelections(); } catch(e) { SELS = {}; }
   hideOverlay();
   var dayIds={}; PROJECTS.forEach(function(p){ dayIds[String(p.id)]=1; });
-  // solo managers con alguna selección entre los proyectos de este día
-  var mns=Object.keys(SELS).filter(function(m){ return Object.keys(SELS[m]).some(function(pid){ return dayIds[pid]; }); });
+  // ¿el manager tiene algún impacto propio != '-' en este proyecto? (un borrado solo no cuenta)
+  function mgrRated(m,pid){ var e=SELS[m][pid]; return !!(e&&e.impacts&&CLIENTS.some(function(c){return e.impacts[c]&&e.impacts[c]!=='-';})); }
+  // solo managers con alguna calificación real entre los proyectos de este día
+  var mns=Object.keys(SELS).filter(function(m){ return Object.keys(SELS[m]).some(function(pid){ return dayIds[pid] && mgrRated(m,pid); }); });
   var selPids={}; mns.forEach(function(m){Object.keys(SELS[m]).forEach(function(pid){ if(dayIds[pid]) selPids[String(pid)]=true;});});
-  var sp=PROJECTS.filter(function(p){return selPids[String(p.id)];});
+  // Al export van solo los proyectos con al menos un impacto EFECTIVO != '-' (si borraron todas
+  // sus calificaciones, no debe llegar al Master Tracker).
+  var mergedAll = mergeImpacts(Object.keys(selPids), SELS);
+  var sp=PROJECTS.filter(function(p){ var mi=mergedAll[String(p.id)]; return mi && CLIENTS.some(function(c){return mi[c]&&mi[c]!=='-';}); });
   var h='<div class="admin-body">';
   h+='<div class="m-date" style="justify-content:flex-end;margin-bottom:12px"><label for="cons-date">Día</label><input type="date" id="cons-date" value="'+viewDate+'" max="'+isoToday()+'" onchange="consolidadoChangeDate(this.value)"></div>';
   h+='<div class="admin-card">';
@@ -988,7 +993,8 @@ async function renderConsolidado(container) {
 async function consolidadoChangeDate(iso) { if(!iso)return; viewDate=iso; await renderConsolidado(document.getElementById('app')); }
 
 function managerCard(name,sel,projects) {
-  var ps=projects.filter(function(p){return sel[String(p.id)];});
+  // Solo proyectos donde este manager tiene algún impacto propio != '-' (un borrado solo no lista).
+  var ps=projects.filter(function(p){ var e=sel[String(p.id)]; return !!(e&&e.impacts&&CLIENTS.some(function(c){return e.impacts[c]&&e.impacts[c]!=='-';})); });
   var h='<div class="mgr-card"><div class="mgr-hdr"><i class="ti ti-user" style="color:var(--blue);font-size:16px"></i>';
   h+='<span class="mgr-name">'+esc(name)+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
   h+='<button class="mgr-clear" onclick="clearMgrSel(\''+name.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i></button></div><div class="mgr-projs">';
@@ -1071,7 +1077,9 @@ var SHEET_IMPACT_COLS = [
   {col:'Tetrapak',  key:'Tetrapak'},
   {col:'Sanofi',    key:'Sanofi'},
   {col:'Rio Tinto', key:'Rio Tinto'},
-  {col:'Dow',       key:'Dow'}
+  {col:'Dow',       key:'Dow'},
+  {col:'Renault',   key:'Renault'},
+  {col:'BMW',       key:'BMW'}
 ];
 
 // Genera filas tabuladas alineadas a las columnas del Master Tracker 2.0 (Sheet1):
