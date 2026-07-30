@@ -106,8 +106,8 @@ Notas:
 ## La skill `snippet-to-json`
 
 - Convierte el Daily Legal Snippet (Word/.eml/texto) en el JSON que importa la app.
-- Vive en la cuenta de Claude (panel **Settings → Skills**), no en este repo. El fuente y el `.skill`
-  empaquetado están en la carpeta local `Snippet digital/snippet-digital-json/`.
+- Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
+  empaquetado están en la carpeta `skill/` de este repo.
 - **Importante:** para que salgan los **links** al texto de cada proyecto, hay que **adjuntar el
   `.docx`** (los links son hipervínculos de Word; si se copia el texto plano se pierden).
 - El campo `tema` lo genera Claude libremente (si no encaja en la lista, inventa uno corto). En la
