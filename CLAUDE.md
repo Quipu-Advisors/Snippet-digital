@@ -89,12 +89,18 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > consolidado) y arma **dos tablas** con las 17 columnas del Legislative Tracking de Lark:
 > Alto+Medio (pestaña principal) y Bajo. Mapeos: Alto→High, Medio→Normal, Bajo→Low;
 > Nacional→National, CABA→City of Buenos Aires, etc. (`larkJur`); organismo→Deputies/Senate/
-> Provincial Deputies (`larkChamber`). El copy escribe texto plano (TSV) **y HTML**, así el título
-> pega en Lark con el hipervínculo al texto del proyecto. Los campos que la app no trackea van
-> vacíos (Likelihood, Notes, Legal Analysis, Contacts) y Status sale "In progress". La app
-> **recuerda el último "Hasta" copiado** (localStorage por usuario) y el próximo rango arranca al
-> día siguiente, para no duplicar ni saltear días. Ojo: título/resumen/autor salen **en español**
-> (la app no traduce); si Lark exige inglés, la traducción sigue siendo manual.
+> Provincial Deputies (`larkChamber`). Las convenciones están **alineadas a la skill de Claude
+> "Lark Legislative Tracker" que usa Milagros**: fechas `YYYY-MM-DD`, Update date = día del export,
+> Notes autoarmado ("Submitted to Committees | Project presented by [bloque]", partido extraído
+> del autor en `larkNotes`), Topic mapeado a la lista fija de la skill (`LARK_TOPIC_MAP`; lo no
+> mapeable queda en español y lo resuelve la skill). Status sale "In progress"; Likelihood, Legal
+> Analysis y Contacts van vacíos. Hay **dos botones por tabla**: "Copiar para Lark" (TSV + HTML,
+> el título pega con hipervínculo — texto en español) y **"Copiar para Claude (Excel en inglés)"**
+> (copia las filas + un prompt que invoca la skill: traduce el resumen, pone el título temático,
+> completa Likelihood y genera el Excel, SIN tocar el Business Impact que ya calificó el equipo;
+> el link viaja como columna 18 para el hipervínculo del Excel). La app **recuerda el último
+> "Hasta" copiado** (localStorage por usuario) y el próximo rango arranca al día siguiente, para
+> no duplicar ni saltear días.
 
 Notas:
 - **Admin = pertenecer a Research.** Quien esté en `RESEARCH` ve los 3 pasos (Cargar proyectos →

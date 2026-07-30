@@ -1139,6 +1139,43 @@ function fallbackCopy(text,cb) {
 // 12 Home Chamber · 13 Project number · 14 Legislator · 15 Topic ·
 // 16 Parent items · 17 Field 1
 var LARK_IMPACT = {Alto:'High', Medio:'Normal', Bajo:'Low'};
+// Tema de la app -> lista fija de Topics de la skill de Lark (solo los mapeos seguros;
+// lo que no está acá sale con el tema en español y lo ajusta la skill de Claude).
+var LARK_TOPIC_MAP = {
+  'datos personales':'Data protection / Personal Data',
+  'inteligencia artificial':'AI',
+  'grooming':'Grooming',
+  'redes sociales':'Social Media',
+  'ciberbullying':'Cyberbullying',
+  'cyberbullying':'Cyberbullying',
+  'plataformas digitales':'Audiovisual / Digital platforms',
+  'educacion':'Education / Digital Education',
+  'juego online':'Online gambling',
+  'juegos de azar':'Online gambling',
+  'ludopatia':'Online gambling',
+  'violencia digital':'Digital Violence (women)',
+  'influencers':'Influencers regulation',
+  'datos biometricos':'Biometric Data',
+  'ciberseguridad':'Cyberprotection / Digital security',
+  'contenido ilegal':'Illegal Content / Content moderation',
+  'acceso a la informacion':'Access to Information',
+  'uso de celulares':'Use of cell phones',
+  'proteccion al consumidor':'Consumer protection',
+  'defensa del consumidor':'Consumer protection',
+  'entornos digitales':'Digital Care / Digital Environments',
+  'abuso infantil':'Child Abuse / Child Safety',
+  'proteccion infantil':'Child Abuse / Child Safety'
+};
+function larkTopic(p) { var t=temaOf(p); return LARK_TOPIC_MAP[norm(t)] || t; }
+// DD/MM/YYYY -> YYYY-MM-DD (formato de fecha del tracker de Lark y de la skill).
+function larkDate(f) { if(!f||f.indexOf('/')<0) return f||''; var p=f.split('/'); return p[2]+'-'+p[1]+'-'+p[0]; }
+// Notes de Lark: "Submitted to Committees | Project presented by [bloque]".
+// El bloque/partido sale de los paréntesis del campo autor.
+function larkNotes(autor) {
+  var parties=[], seen={}, m, re=/\(([^)]+)\)/g;
+  while ((m=re.exec(autor||''))) { var x=m[1].trim(); if(x&&!seen[norm(x)]){seen[norm(x)]=1;parties.push(x);} }
+  return 'Submitted to Committees'+(parties.length?' | Project presented by '+parties.join(' / '):'');
+}
 function larkJur(j) {
   if (j==='Nacional') return 'National';
   if (j==='CABA') return 'City of Buenos Aires';
@@ -1153,12 +1190,13 @@ function larkChamber(org) {
   if (l.indexOf('legislatura')>=0) return 'Provincial Legislature';
   return '';
 }
-// Los campos que la app no trackea van vacíos (los completa quien carga Lark);
-// Status sale "In progress" porque los proyectos recién reportados están en trámite.
+// Convenciones alineadas a la skill de Lark: Update date = día del export, fechas
+// YYYY-MM-DD, Notes autoarmado, Status "In progress" (recién reportados = en trámite).
+// Likelihood, Legal Analysis y Contacts van vacíos (los completa la skill o quien carga).
 function larkCells(p, level) {
   return [
-    p.title||'', p.fecha||'', p.resumen||'', LARK_IMPACT[level]||level, '', 'In progress', '', '', '',
-    p.fecha||'', larkJur(p.jur), larkChamber(p.org), p.num||'', p.autor||'', temaOf(p), '', ''
+    p.title||'', isoToday(), p.resumen||'', LARK_IMPACT[level]||level, '', 'In progress', larkNotes(p.autor), '', '',
+    larkDate(p.fecha), larkJur(p.jur), larkChamber(p.org), p.num||'', p.autor||'', larkTopic(p), '', ''
   ];
 }
 function larkRowsTSV(items) { return items.map(function(x){ return larkCells(x.p,x.level).join('\t'); }).join('\n'); }
@@ -1207,10 +1245,12 @@ async function renderLark(container) {
     h+='<div class="admin-card-sub">'+sub+'</div>';
     if (!items.length) { h+='<div style="font-size:13px;color:var(--text3);padding:4px 0 8px">Sin proyectos con este impacto en el rango elegido.</div></div>'; return h; }
     h+='<div class="btn-row"><button class="btn primary" onclick="copyLark(\''+group+'\')"><i class="ti ti-copy"></i> Copiar para Lark</button>'
-      +'<span id="lark-ok-'+group+'" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
+      +'<span id="lark-ok-'+group+'" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span>'
+      +'<button class="btn" onclick="copyLarkPrompt(\''+group+'\')" title="Copia las filas con un prompt para pegar en Claude: traduce, pone el título temático y arma el Excel"><i class="ti ti-prompt"></i> Copiar para Claude (Excel en inglés)</button>'
+      +'<span id="lark-okp-'+group+'" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
     h+='<div class="cprev">'+esc(items.map(function(x){
       var c=larkCells(x.p,x.level);
-      return [c[0].slice(0,60), c[1], c[3], c[12]].join(' | ')+' | ...';
+      return [c[0].slice(0,60), c[9], c[3], c[12]].join(' | ')+' | ...';
     }).join('\n'))+'</div></div>';
     return h;
   }
@@ -1222,9 +1262,10 @@ async function renderLark(container) {
     +'<label for="lark-to">hasta</label><input type="date" id="lark-to" value="'+larkTo+'" max="'+isoToday()+'" onchange="larkChangeRange()"></div>';
   h+='<div class="admin-card"><div class="admin-card-title">'+MULITA_ICON+' Consolidado TikTok para Lark</div>';
   h+='<div class="admin-card-sub">Proyectos reportados entre el '+esc(isoToDisplay(larkFrom))+' y el '+esc(isoToDisplay(larkTo))
-    +' con impacto TikTok cargado (vale la última corrección entre managers). Cada botón copia las filas con las columnas del Legislative Tracking de Lark — pegalas directo en la pestaña que corresponda. El link al texto del proyecto viaja dentro del título.'
+    +' con impacto TikTok cargado (vale la última corrección entre managers), en las columnas del Legislative Tracking de Lark.'
     +(last&&last.to?' <b>Último export: hasta el '+esc(isoToDisplay(last.to))+'</b> — el rango arranca donde dejaste.':'')
-    +'<br>Quedan vacíos para completar en Lark: Likelihood of Approval, Notes, Legal Analysis y Contacts. Status sale "In progress". El título y el resumen salen en español.</div>';
+    +'<br><b>Copiar para Lark</b> pega directo en la pestaña que corresponda (título y resumen en español; el link viaja dentro del título).'
+    +'<br><b>Copiar para Claude (Excel en inglés)</b> copia las filas con un prompt para pegar en Claude: tu skill del Lark Tracker traduce el resumen, pone el título temático, completa Likelihood y genera el Excel — sin tocar el impacto que ya calificó el equipo.</div>';
   h+='<button class="btn" style="font-size:12px;padding:5px 10px" onclick="renderLark(document.getElementById(\'app\'))"><i class="ti ti-refresh"></i> Actualizar</button>';
   h+='</div>';
   h+=larkCard('Impacto Alto y Medio', 'Para la pestaña principal (High + Normal).', larkHigh, 'high');
@@ -1253,6 +1294,30 @@ async function copyLark(group) {
   } catch(e) {
     try { navigator.clipboard.writeText(tsv).then(ok).catch(function(){ fallbackCopy(tsv,ok); }); } catch(e2) { fallbackCopy(tsv,ok); }
   }
+}
+
+// Copia las filas + un prompt para la skill de Claude "Lark Legislative Tracker":
+// la skill traduce el resumen, pone el título temático y completa Likelihood,
+// SIN tocar el Business Impact que ya calificó el equipo.
+function copyLarkPrompt(group) {
+  var items = group==='high' ? larkHigh : larkLow; if (!items.length) return;
+  var tsv = items.map(function(x){
+    var url = safeUrl(x.p.linkTexto)||safeUrl(x.p.linkExpediente);
+    return larkCells(x.p,x.level).concat([url]).join('\t');
+  }).join('\n');
+  var prompt =
+    'Usá la skill del Lark Legislative Tracker (Argentina) para terminar de preparar estas filas y generar el Excel.\n\n'
+    + 'Las filas ya vienen en el orden exacto de las 17 columnas del tracker, separadas por TAB, más una columna extra al final con el link al texto del proyecto.\n\n'
+    + 'Reglas (pisan cualquier criterio propio de la skill):\n'
+    + '- NO cambies: Business Impact (ya lo calificó el equipo en la app), Project number, Legislator, Date of presentation, Update date ni Status.\n'
+    + '- Traducí Proposed changes al inglés (2-4 oraciones, neutras y factuales).\n'
+    + '- Reemplazá Bill (link) por el título temático corto en inglés según la guía de la skill, y usá la columna extra del final como hipervínculo de esa celda. NO incluyas la columna extra en el Excel.\n'
+    + '- Completá Likelihood of Approval (High/Normal/Low) según los criterios de la skill.\n'
+    + '- Topic: si ya viene en inglés de la lista fija, dejalo; si viene en español o vacío, elegí el de la lista.\n'
+    + '- Notes ya viene armado; ajustalo solo si falta el bloque.\n\n'
+    + 'FILAS:\n' + tsv;
+  var ok=function(){ var e=document.getElementById('lark-okp-'+group); if(e){e.style.display='inline';setTimeout(function(){e.style.display='none';},2200);} saveLarkLast(); };
+  try { navigator.clipboard.writeText(prompt).then(ok).catch(function(){ fallbackCopy(prompt,ok); }); } catch(e) { fallbackCopy(prompt,ok); }
 }
 
 /* ============================================================
