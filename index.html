@@ -338,6 +338,11 @@ var RESEARCH = ['Camila','Victoria','Lucas MS'];
 var PUBLIC_AFFAIRS = ['Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros','Nicolás','Federico','Lucas B','Shunko'];
 var MANAGERS = RESEARCH.concat(PUBLIC_AFFAIRS);
 function isResearch(name) { return RESEARCH.indexOf(name) >= 0; }
+// Export a Lark (TikTok): quiénes ven la pestaña "Consolidado TikTok" además de su vista normal.
+// Solo la gente autorizada a entrar a Lark — agregar/quitar nombres acá.
+var LARK_CLIENT = 'TikTok';
+var LARK_USERS = ['Milagros'];
+function canLark(name) { return LARK_USERS.indexOf(name) >= 0; }
 var TEMAS = [{tema:'Datos personales',keys:['dato personal','privacidad']},{tema:'Inteligencia artificial',keys:['inteligencia artificial','algoritm']},{tema:'Grooming',keys:['grooming']},{tema:'Plataformas digitales',keys:['plataforma digital']},{tema:'Derechos laborales',keys:['laboral','trabajador']},{tema:'Redes Sociales',keys:['red social','redes sociales']},{tema:'Educacion',keys:['educati','escolar','escuela']},{tema:'Impuestos',keys:['fiscal','tributari','impuesto']},{tema:'Ambiental',keys:['ambiental','residuo']},{tema:'Medicamentos',keys:['medicamento','farmaco']},{tema:'Biocombustibles',keys:['biocombustible','hidrocarburo']},{tema:'Litio',keys:['litio']},{tema:'Semillas',keys:['semilla']},{tema:'Turismo',keys:['turismo']},{tema:'Lobby',keys:['lobby','cabildeo']},{tema:'Salud mental',keys:['suicida','salud mental']},{tema:'Restricciones comerciales',keys:['exportacion','arancel']}];
 
 // Buckets de fallback para que nada desaparezca de los filtros.
@@ -542,6 +547,11 @@ function buildNav() {
       if (i) h += '<span class="nav-chev"><i class="ti ti-chevron-right"></i></span>';
       h += '<div class="nav-tab'+(s[0]==='adm'?' active':'')+'" id="tab-'+s[0]+'" onclick="switchTab(\''+s[0]+'\')"><span class="step-n">'+(i+1)+'</span> '+s[1]+'</div>';
     });
+  } else if (canLark(currentUser)) {
+    // Public Affairs con acceso a Lark: su vista de revisión + el consolidado TikTok.
+    h = '<div class="nav-tab active" id="tab-mgr" onclick="switchTab(\'mgr\')">Revisión</div>'
+      + '<span class="nav-chev"><i class="ti ti-chevron-right"></i></span>'
+      + '<div class="nav-tab" id="tab-lark" onclick="switchTab(\'lark\')">Consolidado TikTok</div>';
   } else {
     // Public Affairs: vista única, no hace falta etiqueta de pestaña.
     h = '';
@@ -621,7 +631,7 @@ function loadLocalFromSels() {
   }); }
 }
 function logout() { currentUser=null; localSel={}; localImp={}; PROJECTS=[]; SELS={}; buildNav(); renderLogin(); }
-function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr')renderManager(app); else if(tab==='consolidado')renderConsolidado(app); else if(tab==='adm')renderAdmin(app); }
+function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr')renderManager(app); else if(tab==='consolidado')renderConsolidado(app); else if(tab==='adm')renderAdmin(app); else if(tab==='lark')renderLark(app); }
 
 /* ============================================================
    VISTA MANAGER (seleccion)
@@ -1115,6 +1125,134 @@ function fallbackCopy(text,cb) {
   document.body.appendChild(ta);ta.focus();ta.select();
   try{document.execCommand('copy');if(cb)cb();}catch(e){alert('Copia manual: Ctrl+A, Ctrl+C en el preview');}
   document.body.removeChild(ta);
+}
+
+/* ============================================================
+   CONSOLIDADO TIKTOK → LARK (vista de LARK_USERS) — por rango de fechas
+   Genera las dos tablas del Legislative Tracking de Lark: una para
+   impacto Alto+Medio (pestaña principal) y otra para Bajo.
+   ============================================================ */
+// Columnas de la tabla "PLs" de Lark, en orden:
+// 1 Bill (link) · 2 Update date · 3 Proposed changes · 4 Business Impact ·
+// 5 Likelihood of Approval · 6 Status · 7 Notes · 8 Legal Analysis/ALAI ·
+// 9 Internal Contacts · 10 Date of presentation · 11 National/provincial ·
+// 12 Home Chamber · 13 Project number · 14 Legislator · 15 Topic ·
+// 16 Parent items · 17 Field 1
+var LARK_IMPACT = {Alto:'High', Medio:'Normal', Bajo:'Low'};
+function larkJur(j) {
+  if (j==='Nacional') return 'National';
+  if (j==='CABA') return 'City of Buenos Aires';
+  if (j==='Buenos Aires') return 'Buenos Aires Province';
+  return j||'';
+}
+function larkChamber(org) {
+  var l=(org||'').toLowerCase();
+  if (l.indexOf('senad')>=0) return 'Senate';
+  if (l.indexOf('diputados')>=0 && l.indexOf('naci')>=0) return 'Deputies';
+  if (l.indexOf('diputados')>=0) return 'Provincial Deputies';
+  if (l.indexOf('legislatura')>=0) return 'Provincial Legislature';
+  return '';
+}
+// Los campos que la app no trackea van vacíos (los completa quien carga Lark);
+// Status sale "In progress" porque los proyectos recién reportados están en trámite.
+function larkCells(p, level) {
+  return [
+    p.title||'', p.fecha||'', p.resumen||'', LARK_IMPACT[level]||level, '', 'In progress', '', '', '',
+    p.fecha||'', larkJur(p.jur), larkChamber(p.org), p.num||'', p.autor||'', temaOf(p), '', ''
+  ];
+}
+function larkRowsTSV(items) { return items.map(function(x){ return larkCells(x.p,x.level).join('\t'); }).join('\n'); }
+// Variante HTML del portapapeles: "Bill (link)" pega con hipervínculo al texto del proyecto.
+function larkRowsHTML(items) {
+  return '<table>'+items.map(function(x){
+    var cells=larkCells(x.p,x.level);
+    var url=safeUrl(x.p.linkTexto)||safeUrl(x.p.linkExpediente);
+    var first=url?'<a href="'+url+'">'+esc(cells[0])+'</a>':esc(cells[0]);
+    return '<tr><td>'+first+'</td>'+cells.slice(1).map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';
+  }).join('')+'</table>';
+}
+
+var larkFrom='', larkTo='', larkHigh=[], larkLow=[];
+// Memoria del último export (por usuario, en este navegador): el próximo rango arranca
+// el día siguiente al último "Hasta" copiado, para no duplicar ni saltear días en Lark.
+function larkLastKey() { return 'sd_lark_last_'+(currentUser||''); }
+function saveLarkLast() { try { localStorage.setItem(larkLastKey(), JSON.stringify({to:larkTo, at:Date.now()})); } catch(e) {} }
+function getLarkLast() { try { return JSON.parse(localStorage.getItem(larkLastKey())||'null'); } catch(e) { return null; } }
+function isoAddDays(iso,n) { var p=iso.split('-'); var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+n); var z=function(x){return (x<10?'0':'')+x;}; return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+
+async function renderLark(container) {
+  showOverlay('Cargando consolidado TikTok...');
+  try { PROJECTS = await dbGetAllProjects(); SELS = await dbGetAllSelections(); } catch(e) { PROJECTS=[]; SELS={}; }
+  hideOverlay();
+  if (!larkTo) larkTo = isoToday();
+  if (!larkFrom) {
+    var last = getLarkLast();
+    larkFrom = (last && last.to) ? isoAddDays(last.to,1) : isoAddDays(isoToday(),-6);
+    if (larkFrom > larkTo) larkFrom = larkTo;
+  }
+  // Proyectos reportados dentro del rango (por _d, el día del snippet) con impacto
+  // TikTok vigente (última corrección gana, igual que el consolidado del tracker).
+  var inRange = PROJECTS.filter(function(p){ return p._d && p._d>=larkFrom && p._d<=larkTo; });
+  var merged = mergeImpacts(inRange.map(function(p){return String(p.id);}), SELS);
+  larkHigh=[]; larkLow=[];
+  inRange.forEach(function(p){
+    var v=(merged[String(p.id)]||{})[LARK_CLIENT];
+    if (v==='Alto'||v==='Medio') larkHigh.push({p:p,level:v});
+    else if (v==='Bajo') larkLow.push({p:p,level:v});
+  });
+
+  function larkCard(titulo, sub, items, group) {
+    var h='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-table"></i> '+titulo
+      +' <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+items.length+' proyecto(s)</span></div>';
+    h+='<div class="admin-card-sub">'+sub+'</div>';
+    if (!items.length) { h+='<div style="font-size:13px;color:var(--text3);padding:4px 0 8px">Sin proyectos con este impacto en el rango elegido.</div></div>'; return h; }
+    h+='<div class="btn-row"><button class="btn primary" onclick="copyLark(\''+group+'\')"><i class="ti ti-copy"></i> Copiar para Lark</button>'
+      +'<span id="lark-ok-'+group+'" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
+    h+='<div class="cprev">'+esc(items.map(function(x){
+      var c=larkCells(x.p,x.level);
+      return [c[0].slice(0,60), c[1], c[3], c[12]].join(' | ')+' | ...';
+    }).join('\n'))+'</div></div>';
+    return h;
+  }
+
+  var last = getLarkLast();
+  var h='<div class="admin-body">';
+  h+='<div class="m-date" style="justify-content:flex-end;gap:10px;margin-bottom:12px">'
+    +'<label for="lark-from">Reportados desde</label><input type="date" id="lark-from" value="'+larkFrom+'" max="'+isoToday()+'" onchange="larkChangeRange()">'
+    +'<label for="lark-to">hasta</label><input type="date" id="lark-to" value="'+larkTo+'" max="'+isoToday()+'" onchange="larkChangeRange()"></div>';
+  h+='<div class="admin-card"><div class="admin-card-title">'+MULITA_ICON+' Consolidado TikTok para Lark</div>';
+  h+='<div class="admin-card-sub">Proyectos reportados entre el '+esc(isoToDisplay(larkFrom))+' y el '+esc(isoToDisplay(larkTo))
+    +' con impacto TikTok cargado (vale la última corrección entre managers). Cada botón copia las filas con las columnas del Legislative Tracking de Lark — pegalas directo en la pestaña que corresponda. El link al texto del proyecto viaja dentro del título.'
+    +(last&&last.to?' <b>Último export: hasta el '+esc(isoToDisplay(last.to))+'</b> — el rango arranca donde dejaste.':'')
+    +'<br>Quedan vacíos para completar en Lark: Likelihood of Approval, Notes, Legal Analysis y Contacts. Status sale "In progress". El título y el resumen salen en español.</div>';
+  h+='<button class="btn" style="font-size:12px;padding:5px 10px" onclick="renderLark(document.getElementById(\'app\'))"><i class="ti ti-refresh"></i> Actualizar</button>';
+  h+='</div>';
+  h+=larkCard('Impacto Alto y Medio', 'Para la pestaña principal (High + Normal).', larkHigh, 'high');
+  h+=larkCard('Impacto Bajo', 'Para la pestaña de impacto bajo (Low).', larkLow, 'low');
+  h+='</div>'; container.innerHTML=h;
+}
+
+async function larkChangeRange() {
+  var f=document.getElementById('lark-from'), t=document.getElementById('lark-to');
+  if (f&&f.value) larkFrom=f.value;
+  if (t&&t.value) larkTo=t.value;
+  if (larkFrom>larkTo) larkFrom=larkTo;
+  await renderLark(document.getElementById('app'));
+}
+
+async function copyLark(group) {
+  var items = group==='high' ? larkHigh : larkLow; if (!items.length) return;
+  var tsv=larkRowsTSV(items), html=larkRowsHTML(items);
+  var ok=function(){ var e=document.getElementById('lark-ok-'+group); if(e){e.style.display='inline';setTimeout(function(){e.style.display='none';},2200);} saveLarkLast(); };
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/plain': new Blob([tsv],{type:'text/plain'}),
+      'text/html': new Blob([html],{type:'text/html'})
+    })]);
+    ok();
+  } catch(e) {
+    try { navigator.clipboard.writeText(tsv).then(ok).catch(function(){ fallbackCopy(tsv,ok); }); } catch(e2) { fallbackCopy(tsv,ok); }
+  }
 }
 
 /* ============================================================

@@ -64,6 +64,8 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Cambiar la **base de datos** | `var SB_URL` / `var SB_ANON` |
 | Colores de marca | variables `--blue` (#395279) y `--accent` (#C0714D) en `:root` |
 | Cambiar las **columnas del export a Sheets** (master tracker) | función `buildRows` + array `SHEET_IMPACT_COLS` |
+| Agregar/quitar gente que ve el **Consolidado TikTok (Lark)** | `var LARK_USERS = ['Milagros']` |
+| Cambiar el cliente o las columnas del **export a Lark** | `var LARK_CLIENT` y función `larkCells` |
 | Cambiar los **días/hora de corte** | constantes `CUTOFF_DOWS` (0=Dom..6=Sáb; default `[2,5]`=Mar/Vie) y `CUTOFF_HOUR` (default 12) |
 
 > **Fechas de corte:** para evitar backlog, cada proyecto debe rotularse antes del próximo corte
@@ -80,6 +82,19 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (19-34) usan su propio orden y
 > nombres de la planilla (Microsoft, Amazon, Tiktok, Worldcoin, Didi…), mapeados a los clientes de
 > la app en `SHEET_IMPACT_COLS`. Si cambia la planilla (orden, nombres o columnas), ajustá ahí.
+
+> **Export a Lark (TikTok):** los usuarios en `LARK_USERS` (hoy: Milagros) ven una pestaña
+> **"Consolidado TikTok"** junto a su vista de revisión. Filtra por **rango de fechas de reporte**
+> los proyectos con impacto TikTok vigente (misma lógica de "última corrección gana" que el
+> consolidado) y arma **dos tablas** con las 17 columnas del Legislative Tracking de Lark:
+> Alto+Medio (pestaña principal) y Bajo. Mapeos: Alto→High, Medio→Normal, Bajo→Low;
+> Nacional→National, CABA→City of Buenos Aires, etc. (`larkJur`); organismo→Deputies/Senate/
+> Provincial Deputies (`larkChamber`). El copy escribe texto plano (TSV) **y HTML**, así el título
+> pega en Lark con el hipervínculo al texto del proyecto. Los campos que la app no trackea van
+> vacíos (Likelihood, Notes, Legal Analysis, Contacts) y Status sale "In progress". La app
+> **recuerda el último "Hasta" copiado** (localStorage por usuario) y el próximo rango arranca al
+> día siguiente, para no duplicar ni saltear días. Ojo: título/resumen/autor salen **en español**
+> (la app no traduce); si Lark exige inglés, la traducción sigue siendo manual.
 
 Notas:
 - **Admin = pertenecer a Research.** Quien esté en `RESEARCH` ve los 3 pasos (Cargar proyectos →
