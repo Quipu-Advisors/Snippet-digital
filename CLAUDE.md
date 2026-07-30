@@ -129,6 +129,17 @@ Notas:
 - Convierte el Daily Legal Snippet (Word/.eml/texto) en el JSON que importa la app.
 - Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
   empaquetado están en la carpeta `skill/` de este repo.
+
+## La skill `lark-legislative-tracker` (la usa Milagros)
+
+- Cierra el pipeline de TikTok: Smart Snippet → **"Copiar para Claude"** → pegar en Claude →
+  la skill traduce el resumen, pone el título temático en inglés, completa Likelihood y genera
+  el **Excel listo para subir a Lark** (con hipervínculo en Bill (link)). NO toca el Business
+  Impact que ya calificó el equipo. También acepta proyectos sueltos (texto/PDF/URL) como la
+  skill original de Milagros, a la que reemplaza.
+- Fuente y `.skill` empaquetado en `skill/lark-legislative-tracker*` de este repo. Milagros la
+  importa en SU cuenta de Claude (Settings → Skills). Si se actualiza el fuente, re-empaquetar
+  el zip y re-importarla en el panel.
 - **Importante:** para que salgan los **links** al texto de cada proyecto, hay que **adjuntar el
   `.docx`** (los links son hipervínculos de Word; si se copia el texto plano se pierden).
 - El campo `tema` lo genera Claude libremente (si no encaja en la lista, inventa uno corto). En la
