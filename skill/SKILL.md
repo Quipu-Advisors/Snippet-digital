@@ -44,6 +44,7 @@ Cada objeto tiene EXACTAMENTE estos campos, siempre todos presentes:
 | `jur` | EXACTAMENTE una de la lista de jurisdicciones (ver abajo). |
 | `tema` | Etiqueta temática corta (1–3 palabras) que describe de qué trata. Libre — ver "Tema" abajo. |
 | `org` | Organismo / cámara de origen, ej. `"Cámara de Diputados de la Nación"`. |
+| `giro` | Comisión/es a las que fue girado el proyecto (el "giro a comisión"), tal como aparece en el snippet, ej. `"Legislación General"`. Si hay varias, separadas por `; `. Si no aparece, `""`. La app lo usa para armar el Estado del Master Tracker. |
 | `autor` | Autor/es del proyecto. Si no aparece, `""`. |
 | `title` | Título descriptivo, **máximo 150 caracteres**. Resumí si hace falta. |
 | `resumen` | El objeto del proyecto, **SIN** arrancar con "tiene por objeto". Empezá directo por el verbo/sustantivo (ej. "Regular el uso de…", "Crear un régimen de…"). |

@@ -166,9 +166,13 @@ verde) pero colapsadas. Ojo: "expandido" (`expanded`, UI) está **desacoplado** 
 (`localSel`, tiene impacto). El **Consolidado** sí es por día: filtra el histórico de selecciones a
 los proyectos de la fecha elegida (para exportar la tanda del día al master tracker).
 
-Campos de cada proyecto: `id, num, sector, jur, tema, org, autor, title, resumen, linkExpediente,
-linkTexto, fecha`. El `id` arranca con el timestamp (ms) de cuándo se cargó — de ahí sale el
-destaque **"Nuevo"** (cargado hoy).
+Campos de cada proyecto: `id, num, sector, jur, tema, org, giro, autor, title, resumen,
+linkExpediente, linkTexto, fecha`. El `id` arranca con el timestamp (ms) de cuándo se cargó — de
+ahí sale el destaque **"Nuevo"** (cargado hoy). `giro` (la comisión a la que fue girado) viene del
+JSON de la skill y alimenta el Estado del Master Tracker: con giro → "Girado a comisión (X)" en
+Estado y Último movimiento; sin giro → "Sin giro" y Último movimiento vacío. Fecha de último
+movimiento = fecha de ingreso del proyecto. Los proyectos cargados antes de agosto 2026 no tienen
+`giro` guardado (la app lo descartaba al importar) — salen como "Sin giro".
 
 ---
 
@@ -192,6 +196,11 @@ destaque **"Nuevo"** (cargado hoy).
   persiste también los proyectos cuyo único contenido es un borrado (impTs sin valores).
 - **Consolidado:** filas de proyecto expandibles (detalle de solo lectura). Export a Sheets toma el
   impacto más alto entre managers.
+- **Token anti-carrera (`renderSeq`):** las cuatro vistas async (manager, admin, consolidado, Lark)
+  comparten los globales `PROJECTS`/`SELS`. Cada render incrementa `renderSeq` al arrancar y lo
+  chequea después de cada `await`: si otra vista arrancó mientras cargaba, descarta su respuesta.
+  Sin esto, cambiar de pestaña rápido pisaba los datos de la vista activa (síntoma típico: el
+  filtro por fecha de "Proyectos cargados" quedaba vacío). No sacar el chequeo `_tok !== renderSeq`.
 
 ---
 

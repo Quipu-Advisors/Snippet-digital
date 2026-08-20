@@ -350,6 +350,10 @@ var SECTOR_OTRO = 'Otros', JUR_OTRA = 'Otras';
 var SECTOR_FILTER = SECTORES.concat([SECTOR_OTRO]);
 
 var PROJECTS = [], SELS = {}, currentUser = null, viewDate = '', localSel = {}, localImp = {}, localImpTs = {}, expanded = {}, readSet = {}, onlyToday = false, filterDate = '', saveTimer = null;
+// Token anti-carrera: cada render async lo incrementa al arrancar y lo chequea después de
+// cada await. Si otra vista arrancó mientras cargaba, la respuesta vieja se descarta (si no,
+// pisaba PROJECTS/SELS de la vista activa — ej. el filtro por fecha quedaba vacío).
+var renderSeq = 0;
 function setRepDate(v) { filterDate = v || ''; renderList(); }
 function clearRepDate() { filterDate = ''; var el=document.getElementById('rep-date'); if(el) el.value=''; renderList(); }
 var searchQ = '';
@@ -638,8 +642,12 @@ function renderApp(tab) { var app=document.getElementById('app'); if(tab==='mgr'
    ============================================================ */
 async function renderManager(container) {
   // Siempre carga el histórico completo (no depende de la pestaña anterior).
+  var _tok = ++renderSeq;
   showOverlay('Cargando proyectos...');
-  try { PROJECTS = await dbGetAllProjects(); SELS = await dbGetAllSelections(); } catch(e) {}
+  var ps = PROJECTS, ss = SELS;
+  try { ps = await dbGetAllProjects(); ss = await dbGetAllSelections(); } catch(e) {}
+  if (_tok !== renderSeq) return;
+  PROJECTS = ps; SELS = ss;
   loadLocalFromSels(); loadReadSet();
   hideOverlay();
   var h = '<div class="toolbar">';
@@ -778,6 +786,7 @@ function cardHTML(p) {
     h += '<span class="pill p-num">'+esc(p.num)+'</span>';
     if (tema) h += '<span class="pill p-tema">'+esc(tema)+'</span>';
     h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+    if (p.giro) h += '<span class="pill p-org" title="Giro a comisión"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
     if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
     if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
     h += '</div>';
@@ -967,9 +976,13 @@ function commitSave() {
    VISTA CONSOLIDADO (admin) — por día
    ============================================================ */
 async function renderConsolidado(container) {
+  var _tok = ++renderSeq;
   showOverlay('Cargando consolidado...');
-  try { PROJECTS = await dbGetProjects(viewDate); } catch(e) { PROJECTS = []; }
-  try { SELS = await dbGetAllSelections(); } catch(e) { SELS = {}; }
+  var ps = [], ss = {};
+  try { ps = await dbGetProjects(viewDate); } catch(e) {}
+  try { ss = await dbGetAllSelections(); } catch(e) {}
+  if (_tok !== renderSeq) return;
+  PROJECTS = ps; SELS = ss;
   hideOverlay();
   var dayIds={}; PROJECTS.forEach(function(p){ dayIds[String(p.id)]=1; });
   // ¿el manager tiene algún impacto propio != '-' en este proyecto? (un borrado solo no cuenta)
@@ -1025,6 +1038,7 @@ function projDetail(p) {
   var h='<div class="cmeta"><span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
   if(tema) h+='<span class="pill p-tema">'+esc(tema)+'</span>';
   h+='<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+  if(p.giro) h+='<span class="pill p-org" title="Giro a comisión"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
   if(lx) h+='<a href="'+lx+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
   if(lt) h+='<a href="'+lt+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
   h+='</div>';
@@ -1102,10 +1116,15 @@ function buildRows(projects,sels) {
   return projects.map(function(p){
     var imp=merged[String(p.id)]||{};
     var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
+    // Estado (col P) se deduce del giro que trae el JSON de la skill; Último movimiento (Q)
+    // solo se completa si hubo giro (si no, no hay movimiento posterior a la presentación);
+    // Fecha últ. movimiento (R) = fecha de ingreso del proyecto.
+    var giro=(p.giro&&String(p.giro).trim())||'';
+    var estado=giro?('Girado a comisión ('+giro+')'):'Sin giro';
     var base=[
       p.num, p.linkExpediente||'', p.fecha, hoy, 'Argentina', p.jur, p.autor||'', p.sector, ca,
       temaOf(p), (p.title||'').toUpperCase(), 'El proyecto de ley tiene por objeto '+(p.resumen||''),
-      p.linkTexto||'', mapOrg(p.org), '', '', '', ''
+      p.linkTexto||'', mapOrg(p.org), '', estado, (giro?estado:''), p.fecha
     ];
     var impacts=SHEET_IMPACT_COLS.map(function(x){return imp[x.key]||'-';});
     return base.concat(impacts).join('\t');
@@ -1219,8 +1238,12 @@ function getLarkLast() { try { return JSON.parse(localStorage.getItem(larkLastKe
 function isoAddDays(iso,n) { var p=iso.split('-'); var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+n); var z=function(x){return (x<10?'0':'')+x;}; return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
 
 async function renderLark(container) {
+  var _tok = ++renderSeq;
   showOverlay('Cargando consolidado TikTok...');
-  try { PROJECTS = await dbGetAllProjects(); SELS = await dbGetAllSelections(); } catch(e) { PROJECTS=[]; SELS={}; }
+  var ps = [], ss = {};
+  try { ps = await dbGetAllProjects(); ss = await dbGetAllSelections(); } catch(e) {}
+  if (_tok !== renderSeq) return;
+  PROJECTS = ps; SELS = ss;
   hideOverlay();
   if (!larkTo) larkTo = isoToday();
   if (!larkFrom) {
@@ -1327,8 +1350,12 @@ var adminDate = '';
 
 async function renderAdmin(container) {
   if (!adminDate) adminDate = isoToday();
+  var _tok = ++renderSeq;
   showOverlay('Cargando...');
-  try { PROJECTS = await dbGetProjects(adminDate); } catch(e) { PROJECTS = []; }
+  var ps = [];
+  try { ps = await dbGetProjects(adminDate); } catch(e) {}
+  if (_tok !== renderSeq) return;
+  PROJECTS = ps;
   hideOverlay();
   var dayProjects = PROJECTS;
   var h='<div class="admin-body">';
@@ -1348,7 +1375,7 @@ async function renderAdmin(container) {
   h+='<div class="field"><label>Fecha</label><input id="f-fecha" type="date" value="'+adminDate+'"></div></div>';
   h+='<div class="field-grid"><div class="field"><label>Sector *</label><select id="f-sector"><option value="">Selecciona</option>'+SECTORES.map(function(s){return'<option>'+esc(s)+'</option>';}).join('')+'</select></div>';
   h+='<div class="field"><label>Jurisdiccion *</label><select id="f-jur"><option value="">Selecciona</option><option>Nacional</option><optgroup label="Provincial">'+PROVINCIAS.map(function(p){return'<option>'+esc(p)+'</option>';}).join('')+'</optgroup><option>Municipal</option></select></div></div>';
-  h+='<div class="field-grid full"><div class="field"><label>Organismo *</label><input id="f-org"></div></div>';
+  h+='<div class="field-grid"><div class="field"><label>Organismo *</label><input id="f-org"></div><div class="field"><label>Giro a comisión</label><input id="f-giro" placeholder="ej. Legislación General"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Autor/es</label><input id="f-autor"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Titulo *</label><input id="f-title"></div></div>';
   h+='<div class="field-grid full"><div class="field"><label>Resumen (sin "tiene por objeto") *</label><textarea id="f-resumen"></textarea></div></div>';
@@ -1372,6 +1399,7 @@ function extractionPrompt() {
     + '- sector: EXACTAMENTE uno de: ' + SECTORES.join(', ') + '\n'
     + '- jur: EXACTAMENTE uno de: ' + JUR_ORDER.join(', ') + '\n'
     + '- org: nombre del organismo\n'
+    + '- giro: comision/es a las que fue girado el proyecto, si aparece (si no, "")\n'
     + '- autor: autor/es\n'
     + '- title: titulo descriptivo (max 150 caracteres)\n'
     + '- resumen: objeto del proyecto, SIN "tiene por objeto" al inicio\n'
@@ -1404,7 +1432,7 @@ function importJson() {
     clean.push({
       id:newId(), num:num||'(sin número)', title:title||'(sin título)', resumen:resumen,
       sector:canonSector(o.sector), jur:canonJur(o.jur), tema:String(o.tema||'').trim(),
-      org:String(o.org||'').trim(), autor:String(o.autor||'').trim(),
+      org:String(o.org||'').trim(), autor:String(o.autor||'').trim(), giro:String(o.giro||'').trim(),
       linkExpediente:String(o.linkExpediente||o.linkExp||'').trim(),
       linkTexto:String(o.linkTexto||o.linkPdf||'').trim(),
       fecha:String(o.fecha||isoToDisplay(adminDate)).trim()
@@ -1424,7 +1452,7 @@ function importJson() {
 async function saveDay(iso, list) { await dbSaveProjects(iso, list); PROJECTS = list; }
 
 async function addProject() {
-  var num=document.getElementById('f-num').value.trim(),fechaRaw=document.getElementById('f-fecha').value||adminDate,sector=document.getElementById('f-sector').value,jur=document.getElementById('f-jur').value,org=document.getElementById('f-org').value.trim(),autor=document.getElementById('f-autor').value.trim(),title=document.getElementById('f-title').value.trim(),resumen=document.getElementById('f-resumen').value.trim(),linkExpediente=document.getElementById('f-link-exp').value.trim(),linkTexto=document.getElementById('f-link-pdf').value.trim();
+  var num=document.getElementById('f-num').value.trim(),fechaRaw=document.getElementById('f-fecha').value||adminDate,sector=document.getElementById('f-sector').value,jur=document.getElementById('f-jur').value,org=document.getElementById('f-org').value.trim(),giro=document.getElementById('f-giro').value.trim(),autor=document.getElementById('f-autor').value.trim(),title=document.getElementById('f-title').value.trim(),resumen=document.getElementById('f-resumen').value.trim(),linkExpediente=document.getElementById('f-link-exp').value.trim(),linkTexto=document.getElementById('f-link-pdf').value.trim();
   var errs=[]; if(!num)errs.push('Numero');if(!sector)errs.push('Sector');if(!jur)errs.push('Jurisdiccion');if(!org)errs.push('Organismo');if(!title)errs.push('Titulo');if(!resumen)errs.push('Resumen');
   var alertEl=document.getElementById('form-alert');
   if(errs.length){alertEl.innerHTML='<div class="alert error">Completa: '+errs.join(', ')+'</div>';return;}
@@ -1433,7 +1461,7 @@ async function addProject() {
   showOverlay('Guardando...');
   try {
     var list = (targetIso === adminDate) ? PROJECTS.slice() : await dbGetProjects(targetIso);
-    list.push({id:newId(),num:num,sector:canonSector(sector),jur:canonJur(jur),org:org,autor:autor,title:title,resumen:resumen,linkExpediente:linkExpediente,linkTexto:linkTexto,fecha:isoToDisplay(targetIso)});
+    list.push({id:newId(),num:num,sector:canonSector(sector),jur:canonJur(jur),org:org,giro:giro,autor:autor,title:title,resumen:resumen,linkExpediente:linkExpediente,linkTexto:linkTexto,fecha:isoToDisplay(targetIso)});
     await dbSaveProjects(targetIso, list);
     if (targetIso === adminDate) PROJECTS = list;
     hideOverlay();
