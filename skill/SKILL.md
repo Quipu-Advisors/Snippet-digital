@@ -47,10 +47,24 @@ Cada objeto tiene EXACTAMENTE estos campos, siempre todos presentes:
 | `giro` | Comisión/es a las que fue girado el proyecto (el "giro a comisión"), tal como aparece en el snippet, ej. `"Legislación General"`. Si hay varias, separadas por `; `. Si no aparece, `""`. La app lo usa para armar el Estado del Master Tracker. |
 | `autor` | Autor/es del proyecto. Si no aparece, `""`. |
 | `title` | Título descriptivo, **máximo 150 caracteres**. Resumí si hace falta. |
-| `resumen` | El objeto del proyecto, **SIN** arrancar con "tiene por objeto". Empezá directo por el verbo/sustantivo (ej. "Regular el uso de…", "Crear un régimen de…"). |
+| `resumen` | El resumen del proyecto **COPIADO TEXTUAL** del snippet — ver regla abajo. |
 | `linkExpediente` | URL a la ficha/expediente parlamentario si aparece. Si no, `""`. |
 | `linkTexto` | URL al PDF / texto completo del proyecto si aparece. Si no, `""`. |
 | `fecha` | `"DD/MM/YYYY"`. Ver regla de fecha abajo. |
+
+### Resumen textual (IMPORTANTE)
+
+`resumen` NO es un resumen tuyo: es el texto del proyecto **tal cual viene en el snippet**,
+palabra por palabra. No lo acortes, no lo parafrasees, no lo "mejores", no le cambies el orden.
+El equipo necesita leer exactamente lo que reportó el snippet.
+
+Únicos retoques permitidos:
+- Sacar el arranque "tiene por objeto" / "El proyecto de ley tiene por objeto" si está (la app
+  ya antepone esa frase al mostrarlo; si la dejás, saldría duplicada). El resto queda igual,
+  empezando por el verbo/sustantivo que sigue (ej. "Regular el uso de…").
+- Limpiar saltos de línea o espacios dobles del copiado.
+
+Si la entrada del snippet trae varias oraciones para un proyecto, van TODAS en `resumen`.
 
 ### Links embebidos (IMPORTANTE)
 
@@ -125,7 +139,9 @@ Daily Legal Snippet — 02/06/2026
 
 Cámara de Diputados de la Nación
 Expte. 1234-D-2026 — Diputada Pérez, Juana
-Proyecto de ley que tiene por objeto regular el uso de inteligencia artificial en el sector público.
+Proyecto de ley que tiene por objeto regular el uso de inteligencia artificial en el sector
+público. Establece un registro de sistemas de IA utilizados por organismos estatales y crea
+una autoridad de aplicación con facultades de auditoría.
 Texto: https://hcdn.gob.ar/expedientes/1234-D-2026.pdf
 
 Legislatura de Córdoba
@@ -144,7 +160,7 @@ Crea un régimen provincial de promoción de biocombustibles.
     "org": "Cámara de Diputados de la Nación",
     "autor": "Diputada Pérez, Juana",
     "title": "Regulación del uso de inteligencia artificial en el sector público",
-    "resumen": "Regular el uso de inteligencia artificial en el sector público.",
+    "resumen": "Regular el uso de inteligencia artificial en el sector público. Establece un registro de sistemas de IA utilizados por organismos estatales y crea una autoridad de aplicación con facultades de auditoría.",
     "linkExpediente": "",
     "linkTexto": "https://hcdn.gob.ar/expedientes/1234-D-2026.pdf",
     "fecha": "02/06/2026"
@@ -157,7 +173,7 @@ Crea un régimen provincial de promoción de biocombustibles.
     "org": "Legislatura de Córdoba",
     "autor": "Bloque Frente Cívico",
     "title": "Régimen provincial de promoción de biocombustibles",
-    "resumen": "Crear un régimen provincial de promoción de biocombustibles.",
+    "resumen": "Crea un régimen provincial de promoción de biocombustibles.",
     "linkExpediente": "",
     "linkTexto": "",
     "fecha": "02/06/2026"
@@ -165,5 +181,7 @@ Crea un régimen provincial de promoción de biocombustibles.
 ]
 ```
 
-Notá: el `resumen` no arranca con "tiene por objeto"; `sector`/`jur` salen de las listas con la
-grafía exacta; los campos sin dato van como `""`; y la salida es solo el bloque JSON.
+Notá: el `resumen` es **copia textual** del snippet (solo se le saca el "tiene por objeto" del
+arranque; el resto queda palabra por palabra, con todas sus oraciones); `sector`/`jur` salen de
+las listas con la grafía exacta; los campos sin dato van como `""`; y la salida es solo el bloque
+JSON.

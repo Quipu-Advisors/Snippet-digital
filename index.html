@@ -1116,15 +1116,14 @@ function buildRows(projects,sels) {
   return projects.map(function(p){
     var imp=merged[String(p.id)]||{};
     var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
-    // Estado (col P) se deduce del giro que trae el JSON de la skill; Último movimiento (Q)
-    // solo se completa si hubo giro (si no, no hay movimiento posterior a la presentación);
-    // Fecha últ. movimiento (R) = fecha de ingreso del proyecto.
+    // Estado (col P): solo "Girado a comisión" / "Sin giro" (pedido de Cami, sin el nombre).
+    // Último movimiento (Q): ahí sí va el detalle, "Girado a comisión (nombre)", solo si hubo
+    // giro. Fecha últ. movimiento (R) = fecha de ingreso del proyecto.
     var giro=(p.giro&&String(p.giro).trim())||'';
-    var estado=giro?('Girado a comisión ('+giro+')'):'Sin giro';
     var base=[
       p.num, p.linkExpediente||'', p.fecha, hoy, 'Argentina', p.jur, p.autor||'', p.sector, ca,
       temaOf(p), (p.title||'').toUpperCase(), 'El proyecto de ley tiene por objeto '+(p.resumen||''),
-      p.linkTexto||'', mapOrg(p.org), '', estado, (giro?estado:''), p.fecha
+      p.linkTexto||'', mapOrg(p.org), '', (giro?'Girado a comisión':'Sin giro'), (giro?('Girado a comisión ('+giro+')'):''), p.fecha
     ];
     var impacts=SHEET_IMPACT_COLS.map(function(x){return imp[x.key]||'-';});
     return base.concat(impacts).join('\t');

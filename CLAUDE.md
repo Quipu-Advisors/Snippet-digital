@@ -169,8 +169,9 @@ los proyectos de la fecha elegida (para exportar la tanda del día al master tra
 Campos de cada proyecto: `id, num, sector, jur, tema, org, giro, autor, title, resumen,
 linkExpediente, linkTexto, fecha`. El `id` arranca con el timestamp (ms) de cuándo se cargó — de
 ahí sale el destaque **"Nuevo"** (cargado hoy). `giro` (la comisión a la que fue girado) viene del
-JSON de la skill y alimenta el Estado del Master Tracker: con giro → "Girado a comisión (X)" en
-Estado y Último movimiento; sin giro → "Sin giro" y Último movimiento vacío. Fecha de último
+JSON de la skill y alimenta el Estado del Master Tracker: con giro → Estado = "Girado a comisión"
+(sin el nombre, pedido de Cami) y Último movimiento = "Girado a comisión (nombre de la comisión)";
+sin giro → Estado = "Sin giro" y Último movimiento vacío. Fecha de último
 movimiento = fecha de ingreso del proyecto. Los proyectos cargados antes de agosto 2026 no tienen
 `giro` guardado (la app lo descartaba al importar) — salen como "Sin giro".
 
