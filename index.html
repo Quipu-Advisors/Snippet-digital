@@ -333,6 +333,13 @@ var SECTORES = ['Coyuntura general','Consumo masivo','Medios de pago','Tecnologi
 var PROVINCIAS = ['CABA','Buenos Aires','Catamarca','Chaco','Chubut','Cordoba','Corrientes','Entre Rios','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquen','Rio Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucuman'];
 var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']);
 var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow','Renault','BMW'];
+// Nombre a MOSTRAR/EXPORTAR para un cliente, si difiere de su clave interna (CLIENTS).
+// La clave interna ('Coca') no se toca: es la que ya está guardada en Supabase para cada
+// calificación cargada; renombrarla ahí perdería el historial. Este mapeo solo cambia el
+// texto que ve el usuario y el que sale en "Clientes afectados" del Master Tracker, para que
+// el filtro de búsqueda del tracker matchee exacto (pedido de Cami, 2026-08).
+var CLIENT_LABEL = {'Coca':'Coca-Cola'};
+function clientLabel(c) { return CLIENT_LABEL[c] || c; }
 var IMPACT = ['-','Alto','Medio','Bajo','N/A'];
 var RESEARCH = ['Camila','Victoria','Lucas MS'];
 var PUBLIC_AFFAIRS = ['Carolina','Chiara','Hernan','Felicitas','Erika','Ana','Agustina','Milagros','Nicolás','Federico','Lucas B','Shunko'];
@@ -836,7 +843,7 @@ function renderImp(pid) {
       byline = '<span class="imp-by" title="'+esc(names)+'">'+esc(names)+'</span>';
     }
     var cj = c.replace(/'/g,"\\'");
-    h += '<div class="imp-item"><span class="imp-label" title="'+esc(c)+'">'+esc(c)+'</span><div class="imp-ctrl">';
+    h += '<div class="imp-item"><span class="imp-label" title="'+esc(clientLabel(c))+'">'+esc(clientLabel(c))+'</span><div class="imp-ctrl">';
     if (overdue) {
       // Corte vencido: desplegable gris y anulado.
       h += '<select class="imp-select '+cls+'" disabled>';
@@ -1025,7 +1032,7 @@ function managerCard(name,sel,projects) {
     var imp=(sel[String(p.id)]&&sel[String(p.id)].impacts)||{};
     var nd=Object.entries(imp).filter(function(x){return x[1]&&x[1]!=='-';});
     h+='<div class="mgr-proj-wrap">';
-    h+='<div class="mgr-proj" onclick="toggleConsDetail(this)"><i class="ti ti-chevron-right mgr-proj-chev"></i><span class="mgr-pnum">'+esc(p.num)+'</span><span class="mgr-ptitle">'+esc(p.title)+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+esc(String(x[1]).toLowerCase())+'">'+esc(x[0]+': '+x[1])+'</span>';}).join('')+'</div></div>';
+    h+='<div class="mgr-proj" onclick="toggleConsDetail(this)"><i class="ti ti-chevron-right mgr-proj-chev"></i><span class="mgr-pnum">'+esc(p.num)+'</span><span class="mgr-ptitle">'+esc(p.title)+'</span><div class="mgr-imps">'+nd.map(function(x){return'<span class="mgr-imp '+esc(String(x[1]).toLowerCase())+'">'+esc(clientLabel(x[0])+': '+x[1])+'</span>';}).join('')+'</div></div>';
     h+='<div class="cons-detail">'+projDetail(p)+'</div>';
     h+='</div>';
   });
@@ -1115,7 +1122,7 @@ function buildRows(projects,sels) {
   var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return String(p.id);}),sels);
   return projects.map(function(p){
     var imp=merged[String(p.id)]||{};
-    var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).join(', ')||'';
+    var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).map(clientLabel).join(', ')||'';
     // Estado (col P): solo "Girado a comisión" / "Sin giro" (pedido de Cami, sin el nombre).
     // Último movimiento (Q): ahí sí va el detalle, "Girado a comisión (nombre)", solo si hubo
     // giro. Fecha últ. movimiento (R) = fecha de ingreso del proyecto.

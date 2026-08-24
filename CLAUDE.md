@@ -59,6 +59,7 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Agregar/quitar gente de **Research** (acceso admin) | `var RESEARCH = [...]` |
 | Agregar/quitar gente de **Public Affairs** (solo califican) | `var PUBLIC_AFFAIRS = [...]` |
 | Agregar/quitar **clientes** (columnas de impacto) | `var CLIENTS = [...]` |
+| Cambiar el **nombre que se muestra/exporta** de un cliente sin tocar sus calificaciones guardadas | `var CLIENT_LABEL = {...}` |
 | Agregar/quitar **sectores** | `var SECTORES = [...]` **y** actualizar la lista en la skill |
 | Agregar/quitar **provincias/jurisdicciones** | `var PROVINCIAS = [...]` |
 | Cambiar la **base de datos** | `var SB_URL` / `var SB_ANON` |
@@ -77,6 +78,16 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > al abrirlo, los desplegables quedan deshabilitados con un botón **"Cargar fuera de fecha"** que
 > rehabilita la carga y habilita **"Copiar fila para el Master Tracker"** (para que el propio AM la
 > pegue). El override es por tarjeta y por sesión (`overrideLate`).
+
+> **Nombre para mostrar (`CLIENT_LABEL`):** la clave interna de un cliente en `CLIENTS` es la que
+> queda guardada en Supabase en cada calificación (`localImp`/`SELS`). Si hace falta que se
+> **muestre** o **exporte** distinto de esa clave (ej. Cami pidió que "Clientes afectados" en el
+> Master Tracker diga "Coca-Cola" y no "Coca", porque su filtro de búsqueda necesita el texto
+> exacto), NO renombres la entrada en `CLIENTS` — eso rompería el historial de calificaciones ya
+> guardadas bajo la clave vieja. Agregá el mapeo en `CLIENT_LABEL` y usá `clientLabel(c)` donde
+> se muestra el texto al usuario (dropdown de impacto, consolidado) o se exporta (columna
+> "Clientes afectados" de `buildRows`). Las claves de `SHEET_IMPACT_COLS` no se tocan por esto:
+> esas son el orden de columnas fijas del Master Tracker, no texto libre.
 
 > **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34 columnas del
 > **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (19-34) usan su propio orden y
