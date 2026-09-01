@@ -55,7 +55,7 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 
 | Quiero… | Buscá / cambiá |
 |---|---|
-| Cambiar la **contraseña** del equipo | `var TEAM_PASSWORD = 'yaguarete52';` |
+| Cambiar la **contraseña** del equipo | `var TEAM_PASSWORD = 'bachacero2026';` |
 | Agregar/quitar gente de **Research** (acceso admin) | `var RESEARCH = [...]` |
 | Agregar/quitar gente de **Public Affairs** (solo califican) | `var PUBLIC_AFFAIRS = [...]` |
 | Agregar/quitar **clientes** (columnas de impacto) | `var CLIENTS = [...]` |
