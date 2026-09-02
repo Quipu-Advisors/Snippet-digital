@@ -28,9 +28,26 @@ Cualquier cambio de UI debería respetar esto.
 - **Un solo archivo:** `index.html` (HTML + CSS + JS, sin build, sin frameworks).
 - **Datos:** Supabase (PostgreSQL en la nube). Proyecto ref `xyqmtqsczscdejcwusce`.
 - **Hosting:** Vercel (`snippet-digital.vercel.app`), conectado al repo `Quipu-Advisors/Snippet-digital`
-  (**privado** desde 2026-09-01) — cada push a `main` redeploya solo. Migrado desde GitHub Pages;
-  Pages se desactivó solo al pasar el repo a privado (org en plan Free, no permite Pages en
-  repos privados).
+  — cada push a `main` redeploya solo. Migrado desde GitHub Pages.
+- **Repo público de nuevo desde 2026-09-02** (revertido tras un incidente, ver abajo). No pongas
+  nada sensible en el código más allá de lo ya aceptado (`TEAM_PASSWORD`, `SB_ANON`) — es lo mismo
+  que ya era visible para cualquiera con la URL del sitio, público o privado.
+
+> **Incidente 2026-09-02 (resuelto):** el repo había pasado a privado el 09-01 por una razón real
+> (la clave `SB_ANON` de la base interna es visible en el código y **`selections` no tiene RLS**
+> — cualquiera con la clave puede leer/escribir impactos por cliente pegándole directo a la API
+> de Supabase, sin pasar por `TEAM_PASSWORD`). Pero el plan Hobby de Vercel **no deploya repos
+> privados de una organización de GitHub** (solo de cuentas personales) — desde ese momento todos
+> los pushes fallaron en silencio y producción quedó congelada 13 commits atrás, sirviendo
+> **la contraseña vieja ya rotada por exposición** (`bachacero` en vez de `bachacero2026`) sin que
+> nadie lo notara hasta que un cliente nuevo (CIQyP) no aparecía. Se decidió volver el repo a
+> público para desbloquear ya (la privacidad del repo no tapaba el hueco real: lo que sirve el
+> sitio siempre fue público, público o privado el repo, así funciona cualquier hosting estático).
+> **Pendiente de fondo (no urgente, pero real):** agregarle RLS + funciones RPC a la base interna
+> del Smart Snippet, mismo patrón que ya usa `daily-legislative-snippet` (`selections` y
+> `projects` sin policies para `anon`, todo detrás de RPCs `SECURITY DEFINER` con contraseña
+> hasheada). Con eso arreglado, la clave `SB_ANON` deja de ser un problema y el repo puede quedar
+> público sin este riesgo de fondo.
 - **Extracción del snippet → JSON:** una **skill de Claude** (no corre dentro de la app). Ver abajo.
 
 No hay servidor propio ni proceso de build. Se edita el `index.html` y se publica.
