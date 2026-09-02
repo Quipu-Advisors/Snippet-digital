@@ -27,8 +27,10 @@ Cualquier cambio de UI debería respetar esto.
 
 - **Un solo archivo:** `index.html` (HTML + CSS + JS, sin build, sin frameworks).
 - **Datos:** Supabase (PostgreSQL en la nube). Proyecto ref `xyqmtqsczscdejcwusce`.
-- **Hosting:** GitHub Pages, repo `camila509/Snippet-digital`.
-  URL pública: https://camila509.github.io/Snippet-digital/
+- **Hosting:** Vercel (`snippet-digital.vercel.app`), conectado al repo `Quipu-Advisors/Snippet-digital`
+  (**privado** desde 2026-09-01) — cada push a `main` redeploya solo. Migrado desde GitHub Pages;
+  Pages se desactivó solo al pasar el repo a privado (org en plan Free, no permite Pages en
+  repos privados).
 - **Extracción del snippet → JSON:** una **skill de Claude** (no corre dentro de la app). Ver abajo.
 
 No hay servidor propio ni proceso de build. Se edita el `index.html` y se publica.
@@ -38,7 +40,7 @@ No hay servidor propio ni proceso de build. Se edita el `index.html` y se public
 ## Cómo editar y publicar
 
 **Opción A — desde GitHub (sin instalar nada):** entrá al repo → `index.html` → ícono del lápiz →
-editás → **Commit changes**. GitHub Pages republica en ~1 minuto.
+editás → **Commit changes**. Vercel redeploya en ~1 minuto.
 
 **Opción B — con Claude Code (recomendado para cambios no triviales):** abrí esta carpeta, pedí el
 cambio, Claude edita `index.html`, hace commit y `git push`. Sale publicado solo en ~1 min.
@@ -310,15 +312,24 @@ movimiento = fecha de ingreso del proyecto. Los proyectos cargados antes de agos
 ## Seguridad y limitaciones (conocidas y aceptadas)
 
 - La **contraseña está en el HTML** (control liviano, decisión tomada porque la URL solo circula en
-  el equipo). **No** es seguridad fuerte: quien tenga la URL podría leer/escribir la base con la
-  clave pública. La base **no** tiene RLS.
+  el equipo) — hoy `TEAM_PASSWORD='bachacero2026'` (rotada 2026-09-01, la vieja quedó expuesta
+  mientras el repo fue público). **No** es seguridad fuerte: quien tenga la clave `anon` de
+  Supabase (también en el HTML) podría leer/escribir la base directo por REST, sin pasar por esta
+  contraseña. La base **no** tiene RLS.
 - **Sin login real por persona:** se elige el nombre de una lista (no verifica identidad).
 - **Preferencias y "sesión"** viven en el navegador de cada uno (localStorage). En otra compu /
   navegador limpio, se vuelve a pedir la contraseña y los filtros vuelven al default.
 - El **bloqueo de impacto** no es tiempo real (ver arriba).
 
-Si en algún momento se quiere endurecer (RLS + login compartido con Supabase Auth, o proxy serverless
-para la IA), está la opción — pedíselo a Claude Code y te guía.
+**Pendiente explícito, en espera (decisión de Lucas, 2026-09-02 — "dejalo en pendientes"):**
+activar RLS + reescribir el acceso a datos vía funciones `SECURITY DEFINER` (mismo patrón RPC que
+ya usa `daily-legislative-snippet`). Rotar la contraseña de equipo NO alcanza por lo explicado
+arriba. Estimado: media jornada a una jornada completa (el cuello de botella es probar con
+cuidado en una herramienta que usa todo el equipo a diario, sin ambiente de test). Complicación
+extra: **este repo no tiene `setup.sql`** — el esquema de `projects`/`selections` vive solo en
+Supabase (lo armó Camila directo en el dashboard), así que el primer paso al retomar esto es
+confirmar la estructura exacta de esas tablas antes de escribir las funciones RPC. Detalle
+completo en la memoria del proyecto (`snippet-digital.md`).
 
 ---
 
