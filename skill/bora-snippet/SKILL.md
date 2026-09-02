@@ -67,17 +67,19 @@ que conviene volver a generar adjuntando el mail original para no perder los lin
 
 ## Formato de salida
 
-Texto plano (no JSON, no bloque de código) — un bloque por sector, en este orden y formato exacto:
+Texto con **Markdown** (no JSON, no bloque de código ```) — un bloque por sector, en este orden y
+formato exacto. El link va en sintaxis Markdown **sobre el número de la norma**, igual que en el
+Daily Legal Snippet (el número es el texto clickeable, no una URL suelta):
 
 ```
 <Nombre del sector>
 NACIONAL
 
 NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional
-Decreto <número> (<link>): <resumen tal cual, sin acortar>.
+[Decreto <número>](<link>): <resumen tal cual, sin acortar>.
 
 NORMA PUBLICADA (RESOLUCIÓN) | <organismo>
-Resolución <número> (<link>): <resumen tal cual>.
+[Resolución <número>](<link>): <resumen tal cual>.
 
 <Nombre del siguiente sector>
 NACIONAL
@@ -88,10 +90,16 @@ NACIONAL
 - Un salto de línea en blanco entre normas, y entre el sub-encabezado "NACIONAL" y la primera
   norma.
 - Solo incluí sectores que tengan al menos una norma ese día — no listes sectores vacíos.
-- Si el link no está disponible (ver arriba), escribí el número de la norma sin paréntesis ni
-  link: `Decreto 829/2026: ...`.
+- Si el link no está disponible (ver arriba), escribí el número de la norma sin los corchetes ni
+  paréntesis del link: `Decreto 829/2026: ...`.
 - Al final, **fuera** del texto formateado, agregá una lista corta de las normas cuya
   clasificación de sector te generó duda, para que Erika las revise primero.
+
+> **Importante para Erika, al pegar el resultado:** copiá la respuesta **tal como se ve
+> renderizada** en Claude (el texto normal, con "Decreto 829/2026" como link azul clickeable) —
+> **no** el bloque de markdown crudo. Copiando la versión renderizada y pegando en Word, el link
+> viaja como hipervínculo real. Si copiás el texto con los corchetes y paréntesis de markdown tal
+> cual, se pega como texto plano y el link se pierde igual que antes.
 
 ### Valores válidos de sector (elegí uno por norma)
 `Coyuntura general`, `Consumo masivo`, `Medios de pago`, `Tecnologia`, `Automotriz`,
@@ -129,14 +137,18 @@ Petroquimicos
 NACIONAL
 
 NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional
-Decreto 829/2026 (https://www.boletinoficial.gob.ar/detalleAviso/primera/346556/20260831): modifica el Decreto N° 617/25 para postergar hasta el 1° de octubre de 2026 la aplicación de los incrementos remanentes en los montos del impuesto sobre los combustibles líquidos.
+[Decreto 829/2026](https://www.boletinoficial.gob.ar/detalleAviso/primera/346556/20260831): modifica el Decreto N° 617/25 para postergar hasta el 1° de octubre de 2026 la aplicación de los incrementos remanentes en los montos del impuesto sobre los combustibles líquidos.
 
 Coyuntura general
 NACIONAL
 
 NORMA PUBLICADA (RESOLUCIÓN) | ARCA
-Resolución General 5891/2026 (https://www.boletinoficial.gob.ar/detalleAviso/primera/346596/20260831): modifica la Resolución General N° 1.921 para establecer un procedimiento unificado para la modificación y rehabilitación de las destinaciones de exportación mediante el Sistema Informático de Trámites Aduaneros (SITA).
+[Resolución General 5891/2026](https://www.boletinoficial.gob.ar/detalleAviso/primera/346596/20260831): modifica la Resolución General N° 1.921 para establecer un procedimiento unificado para la modificación y rehabilitación de las destinaciones de exportación mediante el Sistema Informático de Trámites Aduaneros (SITA).
 ```
+
+(Así aparece el markdown crudo — en la respuesta real de Claude, "Decreto 829/2026" y
+"Resolución General 5891/2026" se ven como link azul clickeable. Esa versión renderizada es la
+que Erika tiene que copiar, no este bloque de texto.)
 
 *Dudas de clasificación: "Resolución General 5891/2026" (ARCA, trámites aduaneros de
 exportación) la puse en Coyuntura general por no encajar claramente en otro sector — revisar si
