@@ -62,6 +62,8 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 | Cambiar el **nombre que se muestra/exporta** de un cliente sin tocar sus calificaciones guardadas | `var CLIENT_LABEL = {...}` |
 | Agregar/quitar **sectores** | `var SECTORES = [...]` **y** actualizar la lista en la skill |
 | Agregar/quitar **provincias/jurisdicciones** | `var PROVINCIAS = [...]` |
+| Agregar/quitar **países del monitoreo regional** | `var PAISES_REGIONALES = [...]` **y** actualizar `PROJ_FIELDS`/filtro en `api/sync.js` de `daily-legislative-snippet` |
+| Cambiar el nombre que se muestra para una jurisdicción sin tocar el valor guardado | `var JUR_LABEL = {...}` (mismo patrón que `CLIENT_LABEL`) |
 | Cambiar la **base de datos** | `var SB_URL` / `var SB_ANON` |
 | Colores de marca | variables `--blue` (#395279) y `--accent` (#C0714D) en `:root` |
 | Cambiar las **columnas del export a Sheets** (master tracker) | función `buildRows` + array `SHEET_IMPACT_COLS` |
@@ -137,9 +139,21 @@ Notas:
 
 ## La skill `snippet-to-json`
 
-- Convierte el Daily Legal Snippet (Word/.eml/texto) en el JSON que importa la app.
+- Convierte el Daily Legal Snippet (Word/.eml/texto) en el JSON que importa la app: proyectos de
+  ley, normas del Boletín Oficial (tag `NORMA PUBLICADA (...)`) y, si se cargan ahí, resúmenes de
+  sesión (tag `RESUMEN DE SESIÓN | ...`) — emite el campo `tipo` en cada objeto (ver "Tipos de
+  ítem" más arriba).
 - Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
   empaquetado están en la carpeta `skill/` de este repo.
+
+## La skill `whatsapp-resumen-sesion`
+
+- Convierte el texto de una alerta de WhatsApp (formato Título/Fecha/Organismo/Link/Resumen,
+  resumen de sesión o reunión de comisión) directo a JSON `tipo: "resumen_sesion"`, mismo
+  contrato que `snippet-to-json`. Se pega en el mismo campo "Importar proyectos (JSON)" del
+  admin. Si menciona un número de expediente/proyecto en el texto, lo copia a `num` como
+  referencia — sin vincularlo a nada (ver "Tipos de ítem" más arriba, "Sin cruce automático").
+- Fuente y `.skill` empaquetado en `skill/whatsapp-resumen-sesion/` de este repo.
 
 ## La skill `lark-legislative-tracker` (la usa Milagros)
 
@@ -159,6 +173,50 @@ Notas:
   sincroniza con el archivo local).
 
 ---
+
+## Tipos de ítem, ámbito y monitoreo regional (2026-09)
+
+Además de proyectos de ley, la app ahora recibe dos fuentes nuevas: el resumen normativo del
+Boletín Oficial (mail diario de Erika, ~6am) y resúmenes largos de sesión/comisión (alertas de
+WhatsApp). Se suman al mismo Word/mail del Daily Legal Snippet entre las 6am y el mediodía,
+clasificados por sector bajo los mismos encabezados que los proyectos de ley (la skill lee esa
+organización, no la inventa — ver "La skill `snippet-digital-json`" más abajo).
+
+- **`tipo`** (campo nuevo en cada proyecto, JSONB — no rompe datos viejos: si falta, se asume
+  `proyecto_ley`): `proyecto_ley` (default, incluye TODOS los movimientos cortos de la "Guía de
+  redacción Daily Snippet" — presentado, giro, dictamen, media sanción, sanción/rechazo,
+  publicación en B.O. de una ley, etc.) / `norma` (decreto, resolución o disposición del Boletín
+  Oficial — nunca pasó por el Congreso) / `resumen_sesion` (resumen narrativo largo de una sesión
+  o reunión de comisión, típicamente de una alerta de WhatsApp).
+- **Ámbito** (derivado de `tipo`, filtro nuevo en el toolbar): Legislativa (`proyecto_ley` +
+  `resumen_sesion`) / Regulatoria (`norma`).
+- **`giro`/`autor` solo aplican a `proyecto_ley`** — van `""` para los otros dos tipos.
+  `isOverdue`/el ciclo de vencimiento (cortes Mar/Vie) tampoco aplica fuera de `proyecto_ley`.
+- **`resumen_sesion` no lleva calificación de impacto por cliente** (tarjeta "Solo informativo",
+  sin dropdown) y no entra al export del Master Tracker. `norma` sí lleva calificación, igual que
+  un proyecto.
+- **Tags de carga** en el Word/mail (mismo estilo que "PROYECTO DE LEY PRESENTADO" de la guía):
+  - `NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional` (organismo siempre fijo, un decreto lo
+    firma el PEN)
+  - `NORMA PUBLICADA (RESOLUCIÓN) | <organismo específico>` / `NORMA PUBLICADA (DISPOSICIÓN) | <organismo específico>`
+  - `RESUMEN DE SESIÓN | <organismo>` (para las alertas de WhatsApp)
+  - Deliberadamente distinto de `PUBLICACIÓN B.O.` de la guía (esa sigue siendo `proyecto_ley`:
+    una LEY sancionada que llegó a su publicación final, no una norma del Poder Ejecutivo).
+- **Monitoreo regional**: `jur` suma `Chile`/`Uruguay`/`Paraguay` como valores planos (sin
+  desagregación subnacional). En el filtro de Jurisdicción, "Nacional" se muestra "Argentina"
+  (`JUR_LABEL`, mismo patrón que `CLIENT_LABEL` — el valor interno no cambia), las provincias
+  quedan agrupadas bajo "PROVINCIAL ARGENTINA" y Municipal bajo "MUNICIPAL ARGENTINA".
+  **Este contenido regional NO se sincroniza a `daily-legislative-snippet`** (se filtra en su
+  `api/sync.js`) — decisión de producto, no técnica; ver el `CLAUDE.md` de ese repo.
+- **Sin cruce automático**: si un `resumen_sesion` menciona un proyecto de ley por su número, ese
+  número se guarda en `num` como referencia textual (separados por `; ` si hay varios) pero la
+  app **no** lo vincula a la entrada real del proyecto. Decisión consciente para no
+  over-engineerear un v1 — la información para cruzarlo a mano o automatizarlo después ya queda
+  guardada.
+- Dos skills separadas producen el mismo contrato JSON: `snippet-digital-json` (Word/mail diario:
+  proyectos de ley + normas + eventualmente resúmenes de sesión si se cargan ahí) y
+  `whatsapp-resumen-sesion` (texto crudo de una alerta de WhatsApp → JSON de un solo ítem). Las
+  dos se pegan en el mismo campo "Importar proyectos (JSON)" de `admin.html`.
 
 ## Modelo de datos (Supabase)
 
