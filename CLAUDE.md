@@ -91,10 +91,15 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > "Clientes afectados" de `buildRows`). Las claves de `SHEET_IMPACT_COLS` no se tocan por esto:
 > esas son el orden de columnas fijas del Master Tracker, no texto libre.
 
-> **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34 columnas del
-> **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (19-34) usan su propio orden y
-> nombres de la planilla (Microsoft, Amazon, Tiktok, Worldcoin, Didi…), mapeados a los clientes de
-> la app en `SHEET_IMPACT_COLS`. Si cambia la planilla (orden, nombres o columnas), ajustá ahí.
+> **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34+ columnas del
+> **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (desde la 19) usan su propio
+> orden y nombres de la planilla (Microsoft, Amazon, Tiktok, Worldcoin, Didi…), mapeados a los
+> clientes de la app en `SHEET_IMPACT_COLS`. **Al sumar un cliente nuevo (`CLIENTS` +
+> `SHEET_IMPACT_COLS`, convención: agregar al final de ambos), la planilla real tiene que tener
+> una columna nueva en la MISMA posición** (al final de las de impacto) antes de la primera vez
+> que se pegue — si no, el valor de ese cliente cae en la columna que sea que siga en el sheet,
+> no en la de él. Si cambia el orden/nombres de la planilla existente, ajustar `SHEET_IMPACT_COLS`
+> para que coincida.
 
 > **Export a Lark (TikTok):** los usuarios en `LARK_USERS` (hoy: Milagros) ven una pestaña
 > **"Consolidado TikTok"** junto a su vista de revisión. Filtra por **rango de fechas de reporte**

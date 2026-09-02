@@ -373,7 +373,7 @@ function jurLabel(j) { return JUR_LABEL[j] || j; }
 var JUR_GROUP = {};
 PROVINCIAS.forEach(function(p){ JUR_GROUP[p] = 'PROVINCIAL ARGENTINA'; });
 JUR_GROUP['Municipal'] = 'MUNICIPAL ARGENTINA';
-var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow','Renault','BMW'];
+var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow','Renault','BMW','CIQyP'];
 // Nombre a MOSTRAR/EXPORTAR para un cliente, si difiere de su clave interna (CLIENTS).
 // La clave interna ('Coca') no se toca: es la que ya está guardada en Supabase para cada
 // calificación cargada; renombrarla ahí perdería el historial. Este mapeo solo cambia el
@@ -1173,7 +1173,8 @@ var SHEET_IMPACT_COLS = [
   {col:'Rio Tinto', key:'Rio Tinto'},
   {col:'Dow',       key:'Dow'},
   {col:'Renault',   key:'Renault'},
-  {col:'BMW',       key:'BMW'}
+  {col:'BMW',       key:'BMW'},
+  {col:'CIQyP',     key:'CIQyP'}
 ];
 
 // Genera filas tabuladas alineadas a las columnas del Master Tracker 2.0 (Sheet1):
