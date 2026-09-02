@@ -715,11 +715,17 @@ async function renderManager(container) {
   h += '<div class="dd-menu" id="dd-sec-menu"><div class="dd-item" onclick="toggleAllSec(event)"><input type="checkbox" id="chk-all-sec" checked> Todos</div><hr class="dd-divider"><div id="sec-items"></div></div></div>';
   h += '<label>Jurisdicción</label><div class="dd-wrap"><button class="dd-btn" id="dd-jur-btn" onclick="toggleMenu(\'jur\',event)">Todas</button>';
   h += '<div class="dd-menu" id="dd-jur-menu"><div class="dd-item" onclick="toggleAllJur(event)"><input type="checkbox" id="chk-all-jur" checked> Todas</div><hr class="dd-divider">';
-  h += '<div class="dd-item" onclick="toggleJur(\'Nacional\',event)"><input type="checkbox" class="jur-chk" value="Nacional" checked> Nacional</div><hr class="dd-divider">';
-  h += '<div class="dd-group-label">Provincial</div><div class="dd-item" onclick="toggleAllProv(event)"><input type="checkbox" id="chk-all-prov" checked> Todas las provincias</div>';
-  h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">Otras</div>';
-  h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div>';
-  h += '<div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
+  h += '<div class="dd-item" onclick="toggleJur(\'Nacional\',event)"><input type="checkbox" class="jur-chk" value="Nacional" checked> ' + esc(jurLabel('Nacional')) + '</div><hr class="dd-divider">';
+  h += '<div class="dd-group-label">PROVINCIAL ARGENTINA</div><div class="dd-item" onclick="toggleAllProv(event)"><input type="checkbox" id="chk-all-prov" checked> Todas las provincias</div>';
+  h += '<div id="prov-items"></div><hr class="dd-divider"><div class="dd-group-label">MUNICIPAL ARGENTINA</div>';
+  h += '<div class="dd-item" onclick="toggleJur(\'Municipal\',event)"><input type="checkbox" class="jur-chk" value="Municipal" checked> Municipal</div><hr class="dd-divider">';
+  h += '<div class="dd-group-label">Regional</div>';
+  h += PAISES_REGIONALES.map(function(pa){ return '<div class="dd-item" onclick="toggleJur(\''+pa+'\',event)"><input type="checkbox" class="jur-chk" value="'+esc(pa)+'" checked> '+esc(pa)+'</div>'; }).join('');
+  h += '<hr class="dd-divider"><div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
+  h += '<label>Ámbito</label><div class="dd-wrap"><button class="dd-btn" id="dd-amb-btn" onclick="toggleMenu(\'amb\',event)">Todos</button>';
+  h += '<div class="dd-menu" id="dd-amb-menu"><div class="dd-item" onclick="toggleAllAmb(event)"><input type="checkbox" id="chk-all-amb" checked> Todos</div><hr class="dd-divider">';
+  h += '<div class="dd-item" onclick="toggleAmb(\'Legislativa\',event)"><input type="checkbox" class="amb-chk" value="Legislativa" checked> Legislativa</div>';
+  h += '<div class="dd-item" onclick="toggleAmb(\'Regulatoria\',event)"><input type="checkbox" class="amb-chk" value="Regulatoria" checked> Regulatoria</div></div></div>';
   h += '<span class="tb-countdown" id="countdown"></span>';
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
@@ -742,7 +748,7 @@ function filterPrefsKey() { return 'sd_filters_' + (currentUser || ''); }
 function saveFilterPrefs() {
   try {
     if (!document.querySelector('.sec-chk')) return;
-    localStorage.setItem(filterPrefsKey(), JSON.stringify({sectors: getActiveSectors(), jurs: getActiveJurs(), today: onlyToday}));
+    localStorage.setItem(filterPrefsKey(), JSON.stringify({sectors: getActiveSectors(), jurs: getActiveJurs(), ambitos: getActiveAmbitos(), today: onlyToday}));
   } catch(e) {}
 }
 function applyFilterPrefs() {
@@ -751,22 +757,30 @@ function applyFilterPrefs() {
   var p; try { p = JSON.parse(raw); } catch(e) { return; }
   if (!p) return;
   if (Array.isArray(p.sectors)) document.querySelectorAll('.sec-chk').forEach(function(c){ c.checked = p.sectors.indexOf(c.value) >= 0; });
-  if (Array.isArray(p.jurs)) document.querySelectorAll('.jur-chk').forEach(function(c){ c.checked = p.jurs.indexOf(c.value) >= 0; });
+  // Valores de jur nuevos (paises regionales, sumados 2026-09) que una preferencia guardada
+  // ANTES de que existieran no puede haber marcado ni desmarcado a proposito: los dejamos en
+  // su default (tildado), no los ocultamos silenciosamente por no estar en el array guardado.
+  if (Array.isArray(p.jurs)) document.querySelectorAll('.jur-chk').forEach(function(c){ if (PAISES_REGIONALES.indexOf(c.value) < 0) c.checked = p.jurs.indexOf(c.value) >= 0; });
+  if (Array.isArray(p.ambitos)) document.querySelectorAll('.amb-chk').forEach(function(c){ c.checked = p.ambitos.indexOf(c.value) >= 0; });
   onlyToday = !!p.today;
   var ot = document.getElementById('only-today'); if (ot) ot.checked = onlyToday;
-  updateSecBtn(); updateJurBtn();
+  updateSecBtn(); updateJurBtn(); updateAmbBtn();
 }
 
 function getActiveSectors() { return Array.from(document.querySelectorAll('.sec-chk:checked')).map(function(c){return c.value;}); }
 function getActiveJurs() { return Array.from(document.querySelectorAll('.jur-chk:checked')).map(function(c){return c.value;}); }
+function getActiveAmbitos() { return Array.from(document.querySelectorAll('.amb-chk:checked')).map(function(c){return c.value;}); }
 function allSecSelected() { return getActiveSectors().length === document.querySelectorAll('.sec-chk').length; }
 function updateSecBtn() { var a=getActiveSectors(),all=document.querySelectorAll('.sec-chk').length,btn=document.getElementById('dd-sec-btn'),ac=document.getElementById('chk-all-sec'); if(!btn)return; if(!a.length){btn.textContent='Ninguno';ac.checked=false;ac.indeterminate=false;} else if(a.length===all){btn.textContent='Todos';ac.checked=true;ac.indeterminate=false;} else{btn.textContent=a.length+' sectores';ac.checked=false;ac.indeterminate=true;} }
-function updateJurBtn() { var a=getActiveJurs(),total=document.querySelectorAll('.jur-chk').length,btn=document.getElementById('dd-jur-btn'),ac=document.getElementById('chk-all-jur'); if(!btn)return; if(!a.length){btn.textContent='Ninguna';ac.checked=false;ac.indeterminate=false;} else if(a.length===total){btn.textContent='Todas';ac.checked=true;ac.indeterminate=false;} else if(a.length===1){btn.textContent=a[0];ac.checked=false;ac.indeterminate=true;} else{btn.textContent=a.length+' jurisdicciones';ac.checked=false;ac.indeterminate=true;} var pa=document.querySelectorAll('.prov-chk:checked').length,pt=document.querySelectorAll('.prov-chk').length,pac=document.getElementById('chk-all-prov'); if(pac){pac.checked=pa===pt;pac.indeterminate=pa>0&&pa<pt;} }
-function toggleMenu(type,e) { e.stopPropagation(); var id='dd-'+type+'-menu',other=type==='sec'?'dd-jur-menu':'dd-sec-menu'; document.getElementById(other).classList.remove('open'); document.getElementById(id).classList.toggle('open'); }
+function updateJurBtn() { var a=getActiveJurs(),total=document.querySelectorAll('.jur-chk').length,btn=document.getElementById('dd-jur-btn'),ac=document.getElementById('chk-all-jur'); if(!btn)return; if(!a.length){btn.textContent='Ninguna';ac.checked=false;ac.indeterminate=false;} else if(a.length===total){btn.textContent='Todas';ac.checked=true;ac.indeterminate=false;} else if(a.length===1){btn.textContent=jurLabel(a[0]);ac.checked=false;ac.indeterminate=true;} else{btn.textContent=a.length+' jurisdicciones';ac.checked=false;ac.indeterminate=true;} var pa=document.querySelectorAll('.prov-chk:checked').length,pt=document.querySelectorAll('.prov-chk').length,pac=document.getElementById('chk-all-prov'); if(pac){pac.checked=pa===pt;pac.indeterminate=pa>0&&pa<pt;} }
+function updateAmbBtn() { var a=getActiveAmbitos(),all=document.querySelectorAll('.amb-chk').length,btn=document.getElementById('dd-amb-btn'),ac=document.getElementById('chk-all-amb'); if(!btn)return; if(!a.length){btn.textContent='Ninguno';ac.checked=false;ac.indeterminate=false;} else if(a.length===all){btn.textContent='Todos';ac.checked=true;ac.indeterminate=false;} else{btn.textContent=a[0];ac.checked=false;ac.indeterminate=true;} }
+function toggleMenu(type,e) { e.stopPropagation(); var id='dd-'+type+'-menu'; ['sec','jur','amb'].forEach(function(t){ if(t!==type) document.getElementById('dd-'+t+'-menu').classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
 function toggleSec(val,e) { e.stopPropagation(); var chk=Array.from(document.querySelectorAll('.sec-chk')).find(function(c){return c.value===val;}); if(e.target!==chk)chk.checked=!chk.checked; updateSecBtn(); renderList(); }
 function toggleJur(val,e) { e.stopPropagation(); var chk=Array.from(document.querySelectorAll('.jur-chk')).find(function(c){return c.value===val;}); if(e.target!==chk)chk.checked=!chk.checked; updateJurBtn(); renderList(); }
+function toggleAmb(val,e) { e.stopPropagation(); var chk=Array.from(document.querySelectorAll('.amb-chk')).find(function(c){return c.value===val;}); if(e.target!==chk)chk.checked=!chk.checked; updateAmbBtn(); renderList(); }
 function toggleAllSec(e) { e.stopPropagation(); var a=document.getElementById('chk-all-sec'); if(e.target!==a)a.checked=!a.checked; document.querySelectorAll('.sec-chk').forEach(function(c){c.checked=a.checked;}); updateSecBtn(); renderList(); }
 function toggleAllJur(e) { e.stopPropagation(); var a=document.getElementById('chk-all-jur'); if(e.target!==a)a.checked=!a.checked; document.querySelectorAll('.jur-chk').forEach(function(c){c.checked=a.checked;}); document.getElementById('chk-all-prov').checked=a.checked; updateJurBtn(); renderList(); }
+function toggleAllAmb(e) { e.stopPropagation(); var a=document.getElementById('chk-all-amb'); if(e.target!==a)a.checked=!a.checked; document.querySelectorAll('.amb-chk').forEach(function(c){c.checked=a.checked;}); updateAmbBtn(); renderList(); }
 function toggleAllProv(e) { e.stopPropagation(); var a=document.getElementById('chk-all-prov'); if(e.target!==a)a.checked=!a.checked; document.querySelectorAll('.prov-chk').forEach(function(c){c.checked=a.checked;}); updateJurBtn(); renderList(); }
 document.addEventListener('click', function(){ var sm=document.getElementById('dd-sec-menu'),jm=document.getElementById('dd-jur-menu'); if(sm)sm.classList.remove('open'); if(jm)jm.classList.remove('open'); });
 
@@ -922,11 +936,11 @@ function setImp(pid,client,val) {
 }
 
 function renderList() {
-  var aS=getActiveSectors(),aJ=getActiveJurs();
+  var aS=getActiveSectors(),aJ=getActiveJurs(),aA=getActiveAmbitos();
   saveFilterPrefs();
   var q = norm(searchQ);
   var f = PROJECTS.filter(function(p){
-    if (aS.indexOf(p.sector)<0 || aJ.indexOf(p.jur)<0) return false;
+    if (aS.indexOf(p.sector)<0 || aJ.indexOf(p.jur)<0 || aA.indexOf(ambitoOf(p))<0) return false;
     if (onlyToday && !loadedToday(p)) return false;
     if (filterDate && String(p._d)!==filterDate) return false;
     if (q && norm((p.title||'')+' '+(p.num||'')+' '+(p.resumen||'')+' '+(p.autor||'')+' '+temaOf(p)+' '+(p.org||'')).indexOf(q)<0) return false;
