@@ -146,21 +146,29 @@ Notas:
 - Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
   empaquetado están en la carpeta `skill/` de este repo.
 
-## La skill `bora-snippet` (la usa Erika, mail del Boletín Oficial)
+## La skill `daily-legal-snippet` (redacción — la usa Research: Camila/Erika)
 
-- Toma el mail diario del Boletín Oficial (~6am, lista sin organizar de decretos/resoluciones/
-  disposiciones) y devuelve **texto plano organizado por sector**, con el tag `NORMA PUBLICADA
-  (DECRETO/RESOLUCIÓN/DISPOSICIÓN) | <organismo>` — el mismo formato que ya usa el Daily Legal
-  Snippet. **No genera JSON**: es el paso intermedio, para que Erika pegue el resultado en el
-  Word/mail combinado antes de que Camila lo mande al mediodía. El JSON para la app lo genera
-  después `snippet-digital-json`, cuando procese ese Word ya combinado.
-- La clasificación por sector es un primer corte de la IA, no definitivo — la skill devuelve
-  aparte una lista de las normas donde dudó, para que Erika las revise primero. Organismo fijo
-  "Poder Ejecutivo Nacional" solo para decretos; resoluciones/disposiciones llevan el organismo
-  específico tal cual viene en el mail.
-- Necesita el `.eml` adjunto (no texto plano copiado) para conservar los links a cada norma del
-  Boletín Oficial — mismo motivo que `snippet-digital-json` con el Daily Legal Snippet.
-- Fuente y `.skill` empaquetado en `skill/bora-snippet/` de este repo.
+- Guía de formato para **redactar** las novedades del snippet en texto/markdown, con el tag y
+  las reglas exactas de Quipu (anclaje de hipervínculos, fecha sin año, jurisdicción como un solo
+  nombre, verificación de bloque/autor contra el portal oficial de cada cámara). Existía antes
+  solo para proyectos de ley (presentado, giro, dictamen, media sanción, sanción, etc., incluida
+  región — Chile/Uruguay/Paraguay y otros países ya tenían ejemplos). **2026-09-02: se le sumó el
+  esquema 4** (Normas del Boletín Oficial — decretos/resoluciones/disposiciones, tag `NORMA
+  PUBLICADA (...)`), fusionando ahí lo que antes era una skill aparte (`bora-snippet`, dada de
+  baja). Cubre Argentina y región: organismo fijo "Poder Ejecutivo Nacional" solo para decretos
+  argentinos (confirmado); para el resto (resoluciones/disposiciones argentinas, y CUALQUIER
+  norma de Chile/Uruguay/Paraguay, decreto incluido) el organismo es el que traiga la fuente, sin
+  asumir uniformidad.
+- **No genera JSON** — es el paso de redacción/organización, no de carga. Cuando el pedido es
+  ordenar por sector una lista sin clasificar (ej. el mail diario del Boletín Oficial), además
+  clasifica cada norma en un sector y agrupa la salida (mismo estilo que el Daily Legal Snippet),
+  devolviendo aparte una lista de las normas cuyo sector generó duda, para que las revisen antes
+  de sumarlas al Word combinado. El JSON para la app lo genera después `snippet-digital-json`,
+  cuando procese ese Word ya combinado.
+- Necesita el archivo original (`.eml`/`.docx`) para conservar los hipervínculos — texto plano
+  copiado los pierde. Al pegar el resultado en Word hay que copiar la respuesta **renderizada**
+  de Claude (no el markdown crudo), para que el link viaje como hipervínculo real.
+- Fuente y `.skill` empaquetado en `skill/daily-legal-snippet/` de este repo.
 
 ## La skill `whatsapp-resumen-sesion`
 
