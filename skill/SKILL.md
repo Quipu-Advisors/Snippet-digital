@@ -80,13 +80,22 @@ Cada objeto tiene EXACTAMENTE estos campos, siempre todos presentes:
 
 ### Campos por tipo
 
-**`norma`** (decretos/resoluciones/disposiciones del Boletín Oficial):
+**`norma`** (decretos/resoluciones/disposiciones del Boletín Oficial — de Argentina o, si `jur` es
+`Chile`/`Uruguay`/`Paraguay`, del monitoreo regulatorio regional):
 - `num`: número de la norma, ej. `"829/2026"`.
-- `org`: si es `NORMA PUBLICADA (DECRETO)` → SIEMPRE `"Poder Ejecutivo Nacional"` (un decreto lo
-  firma el PEN, no varía). Si es `RESOLUCIÓN` o `DISPOSICIÓN` → el organismo específico tal cual
-  aparece (ej. `"Ministerio de Justicia"`, `"INASE"`, `"ARCA"`). **No** uses un tema o rubro
-  (ej. "Combustibles") como si fuera el organismo — si el snippet no da el organismo real para una
-  resolución/disposición, dejalo en `""` y avisá al final, fuera del JSON.
+- `org`:
+  - **Si `jur` es `Nacional` (Argentina) y el tag es `NORMA PUBLICADA (DECRETO)`** → SIEMPRE
+    `"Poder Ejecutivo Nacional"` (confirmado: en Argentina un decreto lo firma el PEN, no varía
+    según el ministerio que lo refrenda).
+    Regla general para el resto (Argentina RESOLUCIÓN/DISPOSICIÓN, y CUALQUIER norma —
+    decreto, resolución o disposición— de Chile/Uruguay/Paraguay): **NO hay organismo fijo,
+    criterio flexible.** Poné el organismo específico tal cual aparece en la fuente (ej.
+    "Ministerio de Justicia", "INASE", "ARCA", o el ministerio/organismo que corresponda en Chile/
+    Uruguay/Paraguay). No se puede asumir que el Poder Ejecutivo de esos países firma todos sus
+    decretos de forma uniforme como en Argentina — no está confirmado, así que no lo des por
+    sentado.
+  - **No** uses un tema o rubro (ej. "Combustibles") como si fuera el organismo — si la fuente no
+    da el organismo real, dejalo en `""` y avisá al final, fuera del JSON.
 - `giro`, `autor`: siempre `""`.
 - `title`: descripción corta de qué hace la norma (no repitas el tag `NORMA PUBLICADA...`).
 - `resumen`: el texto completo tal cual viene en el snippet.
