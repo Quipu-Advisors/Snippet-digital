@@ -359,7 +359,20 @@ async function dbSaveSelectionAll(m, data) {
    ============================================================ */
 var SECTORES = ['Coyuntura general','Consumo masivo','Medios de pago','Tecnologia','Automotriz','Agroindustria','Petroquimicos','Mineria','Turismo','Salud','Ambiente'];
 var PROVINCIAS = ['CABA','Buenos Aires','Catamarca','Chaco','Chubut','Cordoba','Corrientes','Entre Rios','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquen','Rio Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucuman'];
-var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']);
+// Monitoreo regional (2026-09): países además de Argentina. No sincronizan a DLS (ver api/sync.js
+// del repo daily-legislative-snippet, filtra PAISES_REGIONALES).
+var PAISES_REGIONALES = ['Chile','Uruguay','Paraguay'];
+var JUR_ORDER = ['Nacional'].concat(PROVINCIAS).concat(['Municipal']).concat(PAISES_REGIONALES);
+// Nombre a MOSTRAR para una jurisdicción, si difiere de su clave interna (JUR_ORDER). 'Nacional'
+// se muestra como 'Argentina' — la clave interna NO se renombra (ya está guardada en Supabase en
+// cada proyecto/norma, y el export a Lark depende del valor 'Nacional'); mismo patrón que
+// CLIENT_LABEL más abajo.
+var JUR_LABEL = {'Nacional':'Argentina'};
+function jurLabel(j) { return JUR_LABEL[j] || j; }
+// Agrupación visual de jurisdicciones en los filtros (no cambia el valor guardado).
+var JUR_GROUP = {};
+PROVINCIAS.forEach(function(p){ JUR_GROUP[p] = 'PROVINCIAL ARGENTINA'; });
+JUR_GROUP['Municipal'] = 'MUNICIPAL ARGENTINA';
 var CLIENTS = ['Amazon (grado)','AMEX','Coca','Kenvue','Spotify','AWS','TikTok','Roblox','Syngenta','Airbnb','World','Tetrapak','Sanofi','Rio Tinto','Microsoft','Didi','Dow','Renault','BMW'];
 // Nombre a MOSTRAR/EXPORTAR para un cliente, si difiere de su clave interna (CLIENTS).
 // La clave interna ('Coca') no se toca: es la que ya está guardada en Supabase para cada
@@ -423,11 +436,17 @@ function norm(s) { return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').
 
 function canonSector(s) { var n = norm(s); for (var i=0;i<SECTORES.length;i++) if (norm(SECTORES[i])===n) return SECTORES[i]; return s ? SECTOR_OTRO : SECTOR_OTRO; }
 function canonJur(j) { var n = norm(j); for (var i=0;i<JUR_ORDER.length;i++) if (norm(JUR_ORDER[i])===n) return JUR_ORDER[i]; return j ? JUR_OTRA : JUR_OTRA; }
+// Sin `tipo` (datos viejos, previos a este campo) = proyecto_ley, para no romper nada ya cargado.
+function canonTipo(t) { return (t === 'norma' || t === 'resumen_sesion') ? t : 'proyecto_ley'; }
+function ambitoOf(p) { return (p && p.tipo === 'norma') ? 'Regulatoria' : 'Legislativa'; }
+// resumen_sesion es solo informativo: nunca lleva calificación de impacto por cliente.
+function llevaImpacto(p) { return canonTipo(p && p.tipo) !== 'resumen_sesion'; }
 
 // Limpia/normaliza una lista de proyectos al cargarla.
 function normalizeProjects(list) {
   return (list||[]).map(function(p){
     p.id = (p.id==null) ? newId() : String(p.id);
+    p.tipo = canonTipo(p.tipo);
     p.sector = canonSector(p.sector);
     p.jur = canonJur(p.jur);
     if (!p.fecha) p.fecha = '';
@@ -475,6 +494,7 @@ function cutoffDeadline(repIso) {
   return c;
 }
 function isOverdue(p) {
+  if (p && p.tipo && p.tipo !== 'proyecto_ley') return false; // solo proyectos de ley vencen (norma/resumen_sesion no tienen giro)
   var dl = cutoffDeadline(p && p._d); if (!dl) return false;
   return new Date().getTime() > dl.getTime();
 }
@@ -826,7 +846,8 @@ function cardHTML(p) {
     if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
     h += '</div>';
     if (p.autor) h += '<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
-    h += '<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
+    var prefijo = p.tipo === 'proyecto_ley' ? 'El proyecto de ley tiene por objeto ' : '';
+    h += '<div class="cresumen">'+prefijo+esc(p.resumen||'')+'</div>';
   } else {
     // COLAPSADA (hipercolapsada): solo título + tema
     h += '<div class="cmeta-min">';
@@ -843,7 +864,7 @@ function cardHTML(p) {
   // MITAD DERECHA: solo al expandir (impacto). Colapsada: chevron sutil.
   if (isExp) {
     h += '<div class="cimpact wide" onclick="event.stopPropagation()">';
-    h += renderImp(id);
+    h += llevaImpacto(p) ? renderImp(id) : '<div class="impacts-section"><div class="impacts-title">Solo informativo</div><div style="font-size:12px;color:var(--text3)">Este ítem no lleva calificación de impacto por cliente.</div></div>';
     h += '</div>';
   } else {
     h += '<i class="ti ti-chevron-down card-chev"></i>';
@@ -957,7 +978,7 @@ function renderList() {
       SEC_ORDER.forEach(function(sec) {
         var sp = ps.filter(function(p){return p.sector===sec;}); if (!sp.length) return;
         h += '<div class="group-sector-title" style="margin-top:8px">'+esc(sec)+'</div>';
-        JUR_FULL.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+esc(jur)+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
+        JUR_FULL.forEach(function(jur){ var jp=sp.filter(function(p){return p.jur===jur;}); if(!jp.length)return; h+='<div class="group-jur-title">'+esc(jurLabel(jur))+'</div><div class="group-jur-cards">'+jp.map(cardHTML).join('')+'</div>'; });
       });
     } else {
       h += '<div class="group-jur-cards">'+ps.map(cardHTML).join('')+'</div>';
@@ -1148,17 +1169,23 @@ var SHEET_IMPACT_COLS = [
 // 17 Último movimiento · 18 Fecha últ. movimiento · 19-34 Impacto por cliente.
 function buildRows(projects,sels) {
   var hoy=todayStr(); var merged=mergeImpacts(projects.map(function(p){return String(p.id);}),sels);
-  return projects.map(function(p){
+  // resumen_sesion no lleva impacto ni tracking de estado: no entra al Master Tracker.
+  return projects.filter(function(p){ return llevaImpacto(p); }).map(function(p){
     var imp=merged[String(p.id)]||{};
     var ca=CLIENTS.filter(function(c){return imp[c]&&imp[c]!=='-';}).map(clientLabel).join(', ')||'';
-    // Estado (col P): solo "Girado a comisión" / "Sin giro" (pedido de Cami, sin el nombre).
-    // Último movimiento (Q): ahí sí va el detalle, "Girado a comisión (nombre)", solo si hubo
-    // giro. Fecha últ. movimiento (R) = fecha de ingreso del proyecto.
+    var tipo = canonTipo(p.tipo);
+    var esPais = PAISES_REGIONALES.indexOf(p.jur) >= 0;
+    var pais = esPais ? p.jur : 'Argentina', subjur = esPais ? '' : p.jur;
+    // Estado (col P) / Último movimiento (Q): solo tienen sentido para un proyecto de ley
+    // (giro a comisión). Una norma ya está vigente, no tiene ese ciclo.
     var giro=(p.giro&&String(p.giro).trim())||'';
+    var sumario = tipo==='proyecto_ley' ? ('El proyecto de ley tiene por objeto '+(p.resumen||'')) : (p.resumen||'');
+    var estado = tipo==='proyecto_ley' ? (giro?'Girado a comisión':'Sin giro') : 'Norma vigente';
+    var ultMov = tipo==='proyecto_ley' ? (giro?('Girado a comisión ('+giro+')'):'') : '';
     var base=[
-      p.num, p.linkExpediente||'', p.fecha, hoy, 'Argentina', p.jur, p.autor||'', p.sector, ca,
-      temaOf(p), (p.title||'').toUpperCase(), 'El proyecto de ley tiene por objeto '+(p.resumen||''),
-      p.linkTexto||'', mapOrg(p.org), '', (giro?'Girado a comisión':'Sin giro'), (giro?('Girado a comisión ('+giro+')'):''), p.fecha
+      p.num, p.linkExpediente||'', p.fecha, hoy, pais, subjur, p.autor||'', p.sector, ca,
+      temaOf(p), (p.title||'').toUpperCase(), sumario,
+      p.linkTexto||'', mapOrg(p.org), '', estado, ultMov, p.fecha
     ];
     var impacts=SHEET_IMPACT_COLS.map(function(x){return imp[x.key]||'-';});
     return base.concat(impacts).join('\t');
@@ -1419,7 +1446,7 @@ async function renderAdmin(container) {
   // ---- Lista del día ----
   h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-list"></i> Proyectos del '+esc(isoToDisplay(adminDate))+' <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+dayProjects.length+'</span></div>';
   h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn danger" onclick="clearDayProjects()"><i class="ti ti-trash"></i> Limpiar este día</button></div><div id="proj-list">';
-  if(dayProjects.length){dayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+esc(p.num)+'</span><span class="pi-title">'+esc(p.title)+'</span><span class="pi-jur">'+esc(p.jur+' - '+p.sector)+'</span><button class="pi-del" onclick="deleteProject(\''+String(p.id)+'\')"><i class="ti ti-trash"></i></button></div>';});}
+  if(dayProjects.length){dayProjects.forEach(function(p){h+='<div class="pi-row"><span class="pi-num">'+esc(p.num)+'</span><span class="pi-title">'+esc(p.title)+'</span><span class="pi-jur">'+esc(jurLabel(p.jur)+' - '+p.sector)+'</span><button class="pi-del" onclick="deleteProject(\''+String(p.id)+'\')"><i class="ti ti-trash"></i></button></div>';});}
   else{h+='<div style="font-size:13px;color:var(--text3);padding:8px 0">No hay proyectos cargados para este día.</div>';}
   h+='</div></div></div>'; container.innerHTML=h;
 }
@@ -1464,7 +1491,7 @@ function importJson() {
     var num=String(o.num||'').trim(), title=String(o.title||'').trim(), resumen=String(o.resumen||'').trim();
     if(!num && !title){skipped++;return;}
     clean.push({
-      id:newId(), num:num||'(sin número)', title:title||'(sin título)', resumen:resumen,
+      id:newId(), tipo:canonTipo(o.tipo), num:num||'(sin número)', title:title||'(sin título)', resumen:resumen,
       sector:canonSector(o.sector), jur:canonJur(o.jur), tema:String(o.tema||'').trim(),
       org:String(o.org||'').trim(), autor:String(o.autor||'').trim(), giro:String(o.giro||'').trim(),
       linkExpediente:String(o.linkExpediente||o.linkExp||'').trim(),
