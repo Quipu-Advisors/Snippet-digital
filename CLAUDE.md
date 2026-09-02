@@ -146,6 +146,22 @@ Notas:
 - Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
   empaquetado están en la carpeta `skill/` de este repo.
 
+## La skill `bora-snippet` (la usa Erika, mail del Boletín Oficial)
+
+- Toma el mail diario del Boletín Oficial (~6am, lista sin organizar de decretos/resoluciones/
+  disposiciones) y devuelve **texto plano organizado por sector**, con el tag `NORMA PUBLICADA
+  (DECRETO/RESOLUCIÓN/DISPOSICIÓN) | <organismo>` — el mismo formato que ya usa el Daily Legal
+  Snippet. **No genera JSON**: es el paso intermedio, para que Erika pegue el resultado en el
+  Word/mail combinado antes de que Camila lo mande al mediodía. El JSON para la app lo genera
+  después `snippet-digital-json`, cuando procese ese Word ya combinado.
+- La clasificación por sector es un primer corte de la IA, no definitivo — la skill devuelve
+  aparte una lista de las normas donde dudó, para que Erika las revise primero. Organismo fijo
+  "Poder Ejecutivo Nacional" solo para decretos; resoluciones/disposiciones llevan el organismo
+  específico tal cual viene en el mail.
+- Necesita el `.eml` adjunto (no texto plano copiado) para conservar los links a cada norma del
+  Boletín Oficial — mismo motivo que `snippet-digital-json` con el Daily Legal Snippet.
+- Fuente y `.skill` empaquetado en `skill/bora-snippet/` de este repo.
+
 ## La skill `whatsapp-resumen-sesion`
 
 - Convierte el texto de una alerta de WhatsApp (formato Título/Fecha/Organismo/Link/Resumen,
