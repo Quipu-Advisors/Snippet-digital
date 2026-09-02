@@ -196,9 +196,13 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   sin dropdown) y no entra al export del Master Tracker. `norma` sí lleva calificación, igual que
   un proyecto.
 - **Tags de carga** en el Word/mail (mismo estilo que "PROYECTO DE LEY PRESENTADO" de la guía):
-  - `NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional` (organismo siempre fijo, un decreto lo
-    firma el PEN)
+  - `NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional` (organismo fijo — **solo para
+    decretos argentinos**, confirmado que el PEN los firma sin variar según ministerio)
   - `NORMA PUBLICADA (RESOLUCIÓN) | <organismo específico>` / `NORMA PUBLICADA (DISPOSICIÓN) | <organismo específico>`
+  - Para normas de Chile/Uruguay/Paraguay (cualquier sub-tipo, incluido decreto): **sin
+    organismo fijo** — no está confirmado que el Poder Ejecutivo de esos países firme de forma
+    uniforme como en Argentina, así que el organismo se toma tal cual aparece en la fuente
+    (mismo criterio flexible que resolución/disposición).
   - `RESUMEN DE SESIÓN | <organismo>` (para las alertas de WhatsApp)
   - Deliberadamente distinto de `PUBLICACIÓN B.O.` de la guía (esa sigue siendo `proyecto_ley`:
     una LEY sancionada que llegó a su publicación final, no una norma del Poder Ejecutivo).
