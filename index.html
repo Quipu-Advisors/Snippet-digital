@@ -385,6 +385,10 @@ var IMPACT = ['-','Alto','Medio','Bajo','N/A'];
 var RESEARCH = ['Camila','Victoria','Lucas MS','Erika'];
 var PUBLIC_AFFAIRS = ['Carolina','Chiara','Hernan','Felicitas','Ana','Agustina','Milagros','Nicolás','Federico','Lucas Barreiros','Shunko','Lucas Bello'];
 var MANAGERS = RESEARCH.concat(PUBLIC_AFFAIRS);
+// Nombre para mostrar sin tocar la clave interna (mismo patrón que CLIENT_LABEL/JUR_LABEL) — la
+// clave queda guardada en cada calificación de Supabase, no se renombra para no romper historial.
+var MANAGER_LABEL = {'Hernan':'Hernán'};
+function managerLabel(m) { return MANAGER_LABEL[m] || m; }
 function isResearch(name) { return RESEARCH.indexOf(name) >= 0; }
 // Export a Lark (TikTok): quiénes ven la pestaña "Consolidado TikTok" además de su vista normal.
 // Solo la gente autorizada a entrar a Lark — agregar/quitar nombres acá.
@@ -617,7 +621,7 @@ function buildNav() {
   }
   tabs.innerHTML = h;
   if (right) right.innerHTML = helpMulita() + navFecha()
-    + '<span class="nav-user"><i class="ti ti-user-circle"></i>' + esc(currentUser) + '</span>'
+    + '<span class="nav-user"><i class="ti ti-user-circle"></i>' + esc(managerLabel(currentUser)) + '</span>'
     + '<button class="nav-logout" onclick="logout()">Salir</button>';
 }
 
@@ -659,7 +663,7 @@ function renderLogin() {
     h += '<div class="lg-group ' + g.cls + '"><div class="lg-group-title"><i class="ti ' + g.icon + '"></i> ' + g.title + '</div>';
     h += '<div class="lg-names">';
     g.names.forEach(function(m) {
-      h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><strong>' + esc(m) + '</strong></div>';
+      h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><strong>' + esc(managerLabel(m)) + '</strong></div>';
     });
     h += '</div></div>';
   });
@@ -902,7 +906,7 @@ function renderImp(pid) {
     // Cadena de nombres (ej.: "Carolina - Hernán"). No la muestro si el único que calificó soy yo.
     var byline = '';
     if (ratings.length && !(ratings.length===1 && ratings[0].name===currentUser)) {
-      var names = ratings.map(function(r){ return r.name; }).join(' - ');
+      var names = ratings.map(function(r){ return managerLabel(r.name); }).join(' - ');
       byline = '<span class="imp-by" title="'+esc(names)+'">'+esc(names)+'</span>';
     }
     var cj = c.replace(/'/g,"\\'");
@@ -1089,7 +1093,7 @@ function managerCard(name,sel,projects) {
   // Solo proyectos donde este manager tiene algún impacto propio != '-' (un borrado solo no lista).
   var ps=projects.filter(function(p){ var e=sel[String(p.id)]; return !!(e&&e.impacts&&CLIENTS.some(function(c){return e.impacts[c]&&e.impacts[c]!=='-';})); });
   var h='<div class="mgr-card"><div class="mgr-hdr"><i class="ti ti-user" style="color:var(--blue);font-size:16px"></i>';
-  h+='<span class="mgr-name">'+esc(name)+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
+  h+='<span class="mgr-name">'+esc(managerLabel(name))+'</span><span class="mgr-count">'+ps.length+' proyecto(s)</span>';
   h+='<button class="mgr-clear" onclick="clearMgrSel(\''+name.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i></button></div><div class="mgr-projs">';
   ps.forEach(function(p){
     var imp=(sel[String(p.id)]&&sel[String(p.id)].impacts)||{};
