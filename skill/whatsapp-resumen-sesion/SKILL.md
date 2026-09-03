@@ -69,13 +69,17 @@ alerta junta) — sin comentarios ni explicaciones.
 | `giro` | Siempre `""` (no aplica a este tipo). |
 | `autor` | Siempre `""` (no aplica a este tipo). |
 | `title` | El título de la alerta, máximo 150 caracteres. |
-| `resumen` | El texto narrativo **COPIADO TEXTUAL**, completo — no lo acortes ni lo parafrasees. |
+| `resumen` | El texto narrativo **COPIADO TEXTUAL**, completo — no lo acortes ni lo parafrasees. **Conservá los saltos de párrafo del original** como `\n\n` dentro del string JSON (no lo aplanes en un solo bloque corrido): si la alerta trae el resumen dividido en varios párrafos, el JSON tiene que reflejar esa misma división. |
 | `linkExpediente` | Siempre `""`. |
 | `linkTexto` | El link de la alerta (video/registro de la sesión), si aparece. Si no, `""`. |
 | `fecha` | `"DD/MM/YYYY"` — la fecha de la SESIÓN (la que trae la alerta), no la de hoy. |
 
 ## Reglas importantes
 
+- **No aplanes el resumen en un solo párrafo.** Si el texto original tiene varios párrafos
+  (separados por línea en blanco), el campo `resumen` del JSON tiene que traer esos mismos
+  cortes como `\n\n` — la app los muestra tal cual, un párrafo aplastado se lee peor y pierde
+  la estructura que armó quien escribió la alerta.
 - **No inventes datos.** Lo que no esté en el texto va `""`.
 - **No vincules el/los expediente/s de `num` a nada** — es solo texto de referencia, la app no
   hace ningún cruce automático con eso.

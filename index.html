@@ -160,7 +160,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .late-mt .mt-ok{font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:4px}
 .card-nuevo{position:absolute;top:0;right:0;background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:0 8px 0 8px}
 .card-overdue{position:absolute;right:16px;bottom:14px;height:16px}
-.cresumen{font-size:14px;color:var(--text2);line-height:1.55}
+.cresumen{font-size:14px;color:var(--text2);line-height:1.55;white-space:pre-wrap}
 .cautor{font-size:12px;color:var(--text);font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:5px}
 .cautor i{color:var(--accent)}
 .impacts-section{margin-top:0}
@@ -885,6 +885,7 @@ function cardHTML(p) {
     if (p.giro) h += '<span class="pill p-org" title="Giro a comisión"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
     if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
     if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> '+esc(linkTextoLabel(p))+'</a>';
+    if (!llevaImpacto(p)) h += '<span class="pill" style="background:var(--blue-bg);color:var(--blue-dark)" title="Este ítem no lleva calificación de impacto por cliente"><i class="ti ti-info-circle" style="font-size:10px"></i> Solo informativo</span>';
     h += '</div>';
     if (p.autor) h += '<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
     var prefijo = p.tipo === 'proyecto_ley' ? 'El proyecto de ley tiene por objeto ' : '';
@@ -903,12 +904,12 @@ function cardHTML(p) {
   }
   h += '</div>'; // cinfo
 
-  // MITAD DERECHA: solo al expandir (impacto). Colapsada: chevron sutil.
-  if (isExp) {
-    h += '<div class="cimpact wide" onclick="event.stopPropagation()">';
-    h += llevaImpacto(p) ? renderImp(id) : '<div class="impacts-section"><div class="impacts-title">Solo informativo</div><div style="font-size:12px;color:var(--text3)">Este ítem no lleva calificación de impacto por cliente.</div></div>';
-    h += '</div>';
-  } else {
+  // MITAD DERECHA: solo al expandir Y si lleva impacto (si no, no hay nada que poner ahí —
+  // dejamos que cinfo ocupe todo el ancho en vez de reservar la columna de impactos vacía).
+  // Colapsada: chevron sutil.
+  if (isExp && llevaImpacto(p)) {
+    h += '<div class="cimpact wide" onclick="event.stopPropagation()">' + renderImp(id) + '</div>';
+  } else if (!isExp) {
     h += '<i class="ti ti-chevron-down card-chev"></i>';
   }
   h += '</div>';

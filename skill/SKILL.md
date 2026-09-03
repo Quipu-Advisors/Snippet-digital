@@ -119,7 +119,12 @@ El equipo necesita leer exactamente lo que reportó el snippet.
 - Sacar el arranque "tiene por objeto" / "El proyecto de ley tiene por objeto" si está (la app
   ya antepone esa frase al mostrarlo; si la dejás, saldría duplicada). El resto queda igual,
   empezando por el verbo/sustantivo que sigue (ej. "Regular el uso de…").
-- Limpiar saltos de línea o espacios dobles del copiado.
+- Limpiar saltos de línea **accidentales** del copiado (los que corta un PDF a mitad de oración
+  por el ancho de línea) y espacios dobles.
+- **No aplanes párrafos deliberados.** Si el original divide el texto en varios párrafos
+  (separados por línea en blanco) —typical en `resumen_sesion`, donde el resumen narrativo suele
+  venir así—, conservá esa división como `\n\n` dentro del string JSON. La app respeta esos
+  cortes al mostrarlo; juntar todo en un bloque corrido le hace perder la estructura.
 
 Si la entrada del snippet trae varias oraciones para un proyecto, van TODAS en `resumen`.
 

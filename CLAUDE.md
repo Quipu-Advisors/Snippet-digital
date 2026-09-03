@@ -278,7 +278,15 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   `isOverdue`/el ciclo de vencimiento (cortes Mar/Vie) tampoco aplica fuera de `proyecto_ley`.
 - **`resumen_sesion` no lleva calificación de impacto por cliente** (tarjeta "Solo informativo",
   sin dropdown) y no entra al export del Master Tracker. `norma` sí lleva calificación, igual que
-  un proyecto.
+  un proyecto. Cuando `!llevaImpacto(p)`, `cardHTML` **no reserva la columna `.cimpact.wide`**
+  (no hay nada que poner ahí) — el badge "Solo informativo" va como pill en la fila de metadata y
+  el resumen ocupa el ancho completo de la tarjeta. Si se le suma contenido real a esa columna
+  para algún tipo sin impacto en el futuro, revisar este atajo.
+- **`.cresumen` usa `white-space:pre-wrap`** para que los `\n\n` que traiga el JSON se vean como
+  párrafos separados (si no, un `<div>` los colapsa). Las skills `snippet-digital-json` y
+  `whatsapp-resumen-sesion` tienen instrucción explícita de conservar los saltos de párrafo del
+  original en `resumen` en vez de aplanarlo — antes decían "limpiar saltos de línea", lo cual
+  aplastaba resúmenes largos de `resumen_sesion` en un solo bloque corrido.
 - **Tags de carga** en el Word/mail (mismo estilo que "PROYECTO DE LEY PRESENTADO" de la guía):
   - `NORMA PUBLICADA (DECRETO) | Poder Ejecutivo Nacional` (organismo fijo — **solo para
     decretos argentinos**, confirmado que el PEN los firma sin variar según ministerio)
