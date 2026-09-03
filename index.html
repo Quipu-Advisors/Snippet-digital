@@ -212,6 +212,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .pi-title{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pi-jur{font-size:11px;color:var(--text3);white-space:nowrap}
 .pi-del{padding:4px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);cursor:pointer}
+.admin-del-item{margin-top:4px;padding:3px 8px;font-size:11px;border-radius:var(--radius);border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center}
 .overlay.show{display:flex}
 .overlay-box{background:var(--surface);border-radius:var(--radius-lg);padding:2rem;text-align:center;max-width:320px}
@@ -529,6 +530,24 @@ function updateCountdown() {
 }
 function projectById(pid) { pid=String(pid); for (var i=0;i<PROJECTS.length;i++) if (String(PROJECTS[i].id)===pid) return PROJECTS[i]; return null; }
 function unlockLate(pid) { overrideLate[String(pid)]=1; renderList(); }
+// Borra UN ítem puntual (no el día completo), desde donde sea que se lo esté viendo (histórico,
+// consolidado). Solo Research (isResearch gatea el botón en cardHTML). p._d lo trae dbGetAllProjects;
+// si no está (viendo desde la pestaña "Cargar proyectos"), usa adminDate como fallback.
+async function adminDeleteItem(pid) {
+  pid = String(pid);
+  var p = projectById(pid); if (!p) return;
+  if (!confirm('Eliminar este ítem? No se puede deshacer.')) return;
+  var day = p._d || adminDate;
+  showOverlay('Eliminando...');
+  try {
+    var dayList = await dbGetProjects(day);
+    var filtered = dayList.filter(function(x){ return String(x.id) !== pid; });
+    await dbSaveProjects(day, filtered);
+    PROJECTS = PROJECTS.filter(function(x){ return String(x.id) !== pid; });
+  } catch(e) { hideOverlay(); alert('Error: ' + e.message); return; }
+  hideOverlay();
+  renderList();
+}
 function copyMtRow(pid) {
   pid=String(pid); var p=projectById(pid); if(!p) return;
   var sels={}; Object.keys(SELS).forEach(function(m){ sels[m]=SELS[m]; });
@@ -537,6 +556,10 @@ function copyMtRow(pid) {
   var ok=function(){ var e=document.getElementById('mtok-'+pid); if(e){ e.style.display='inline'; setTimeout(function(){e.style.display='none';},2200); } };
   try { navigator.clipboard.writeText(row).then(ok).catch(function(){ fallbackCopy(row, ok); }); } catch(e) { fallbackCopy(row, ok); }
 }
+// Etiqueta del link linkTexto: no siempre es "texto" — en resumen_sesion es el video/registro
+// de la sesión (lo carga la skill whatsapp-resumen-sesion), no un documento.
+function linkTextoLabel(p) { return (p && p.tipo === 'resumen_sesion') ? 'Fuente oficial' : 'Texto'; }
+
 function mapOrg(org) {
   var l = (org||'').toLowerCase();
   if (l.indexOf('diputados') >= 0 && l.indexOf('naci') >= 0) return 'Camara de Diputados Nacional';
@@ -861,11 +884,12 @@ function cardHTML(p) {
     h += '<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
     if (p.giro) h += '<span class="pill p-org" title="Giro a comisión"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
     if (lx) h += '<a href="'+lx+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
-    if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
+    if (lt) h += '<a href="'+lt+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> '+esc(linkTextoLabel(p))+'</a>';
     h += '</div>';
     if (p.autor) h += '<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
     var prefijo = p.tipo === 'proyecto_ley' ? 'El proyecto de ley tiene por objeto ' : '';
     h += '<div class="cresumen">'+prefijo+esc(p.resumen||'')+'</div>';
+    if (isResearch(currentUser)) h += '<button class="admin-del-item" onclick="event.stopPropagation();adminDeleteItem(\''+id+'\')" title="Eliminar este ítem (solo Research)"><i class="ti ti-trash"></i> Eliminar</button>';
   } else {
     // COLAPSADA (hipercolapsada): solo título + tema
     h += '<div class="cmeta-min">';
@@ -1114,7 +1138,7 @@ function projDetail(p) {
   h+='<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
   if(p.giro) h+='<span class="pill p-org" title="Giro a comisión"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
   if(lx) h+='<a href="'+lx+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
-  if(lt) h+='<a href="'+lt+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> Texto</a>';
+  if(lt) h+='<a href="'+lt+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> '+esc(linkTextoLabel(p))+'</a>';
   h+='</div>';
   if(p.autor) h+='<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
   h+='<div class="cresumen">El proyecto de ley tiene por objeto '+esc(p.resumen||'')+'</div>';
@@ -1447,7 +1471,8 @@ async function renderAdmin(container) {
   h+='<div class="btn-row" style="margin-bottom:10px"><button class="btn" onclick="copyPrompt()"><i class="ti ti-prompt"></i> Copiar prompt para Claude</button><span id="prompt-ok" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
   h+='<div class="field-grid full"><div class="field"><label>JSON de proyectos</label><textarea id="json-text" style="min-height:160px;font-size:12px;font-family:monospace" placeholder=\'[{"num":"1234-D-2026","sector":"Tecnologia","jur":"Nacional",...}]\'></textarea></div></div>';
   h+='<div id="json-alert"></div>';
-  h+='<div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="importJson()"><i class="ti ti-download"></i> Importar JSON</button></div></div>';
+  h+='<div class="btn-row" style="margin-top:12px"><button class="btn primary" onclick="previewImportJson()"><i class="ti ti-eye"></i> Vista previa</button></div>';
+  h+='<div id="import-preview"></div></div>';
 
   // ---- Alta manual ----
   h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-circle-plus"></i> Agregar proyecto manualmente</div>';
@@ -1470,7 +1495,7 @@ async function renderAdmin(container) {
   h+='</div></div></div>'; container.innerHTML=h;
 }
 
-async function adminChangeDate(iso) { if(!iso)return; adminDate=iso; await renderAdmin(document.getElementById('app')); }
+async function adminChangeDate(iso) { if(!iso)return; adminDate=iso; pendingImport=null; await renderAdmin(document.getElementById('app')); }
 
 function extractionPrompt() {
   return 'Sos un asistente especializado en analisis de textos legislativos argentinos. Analiza el Daily Legal Snippet que te paso y extrae TODOS los proyectos de ley.\n\n'
@@ -1496,8 +1521,14 @@ function copyPrompt() {
   try{navigator.clipboard.writeText(txt).then(ok).catch(function(){fallbackCopy(txt,ok);});}catch(e){fallbackCopy(txt,ok);}
 }
 
-function importJson() {
+// Ítems parseados y validados, esperando confirmación (entre "Vista previa" y "Confirmar e
+// importar"). Cualquiera con acceso a "Cargar proyectos" (Research) ve este paso — no es algo
+// que solo se muestre en pruebas, es el flujo normal.
+var pendingImport = null;
+
+function previewImportJson() {
   var alertEl=document.getElementById('json-alert');
+  pendingImport=null; document.getElementById('import-preview').innerHTML='';
   var raw=(document.getElementById('json-text').value||'').trim();
   if(!raw){alertEl.innerHTML='<div class="alert error">Pegá el JSON primero.</div>';return;}
   raw=raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
@@ -1519,11 +1550,59 @@ function importJson() {
     });
   });
   if(!clean.length){ alertEl.innerHTML='<div class="alert error">No se pudo extraer ningún proyecto del JSON.</div>'; return; }
+  alertEl.innerHTML='';
+  pendingImport={clean:clean, skipped:skipped};
+  renderImportPreview();
+}
+
+// Tarjeta de solo lectura para la vista previa — mismo look que verá todo el equipo una vez
+// importado (título, metadata, resumen), sin impacto por cliente (todavía no está guardado).
+function previewItemHTML(p) {
+  var tema=temaOf(p), lx=safeUrl(p.linkExpediente), lt=safeUrl(p.linkTexto);
+  var tipoLbl = p.tipo==='norma' ? 'Norma' : p.tipo==='resumen_sesion' ? 'Resumen de sesión' : 'Proyecto de ley';
+  var h='<div class="card" style="cursor:default"><div class="cinfo">';
+  h+='<div class="ctitle">'+esc(p.title)+'</div><div class="cmeta">';
+  h+='<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
+  h+='<span class="pill p-num">'+esc(p.num)+'</span>';
+  h+='<span class="pill">'+esc(tipoLbl)+'</span>';
+  if(tema) h+='<span class="pill p-tema">'+esc(tema)+'</span>';
+  h+='<span class="pill p-org">'+esc(mapOrg(p.org))+'</span>';
+  if(p.giro) h+='<span class="pill p-org"><i class="ti ti-arrow-ramp-right" style="font-size:10px"></i> '+esc(p.giro)+'</span>';
+  if(lx) h+='<a href="'+lx+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-link" style="font-size:11px"></i> Expediente</a>';
+  if(lt) h+='<a href="'+lt+'" target="_blank" rel="noopener" class="clink"><i class="ti ti-file-text" style="font-size:11px"></i> '+esc(linkTextoLabel(p))+'</a>';
+  h+='</div>';
+  if(p.autor) h+='<div class="cautor"><i class="ti ti-user" style="font-size:12px"></i> '+esc(p.autor)+'</div>';
+  var prefijo = p.tipo==='proyecto_ley' ? 'El proyecto de ley tiene por objeto ' : '';
+  h+='<div class="cresumen">'+prefijo+esc(p.resumen||'')+'</div>';
+  h+='</div></div>';
+  return h;
+}
+
+function renderImportPreview() {
+  var el=document.getElementById('import-preview'); if(!el) return;
+  if(!pendingImport){ el.innerHTML=''; return; }
+  var clean=pendingImport.clean, skipped=pendingImport.skipped;
+  var h='<div class="admin-card-title" style="margin-top:18px"><i class="ti ti-list-check"></i> Vista previa <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+clean.length+'</span></div>';
+  h+='<div class="admin-card-sub">Así se van a ver una vez importados'+(skipped?(' — '+skipped+' descartado(s) por datos incompletos'):'')+'. Revisá antes de confirmar.</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:10px;margin:10px 0">'+clean.map(previewItemHTML).join('')+'</div>';
+  h+='<div class="btn-row"><button class="btn primary" onclick="confirmImportJson()"><i class="ti ti-check"></i> Confirmar e importar</button>';
+  h+='<button class="btn" onclick="cancelImportPreview()"><i class="ti ti-x"></i> Cancelar</button></div>';
+  el.innerHTML=h;
+}
+
+function cancelImportPreview() { pendingImport=null; document.getElementById('import-preview').innerHTML=''; }
+
+function confirmImportJson() {
+  if(!pendingImport) return;
+  var alertEl=document.getElementById('json-alert');
+  var clean=pendingImport.clean, skipped=pendingImport.skipped;
   showOverlay('Importando...');
   saveDay(adminDate, PROJECTS.concat(clean)).then(function(){
     hideOverlay();
+    pendingImport=null;
     alertEl.innerHTML='<div class="alert success"><i class="ti ti-check"></i> '+clean.length+' proyecto(s) importados'+(skipped?(' ('+skipped+' descartados por datos incompletos)'):'')+' para el '+esc(isoToDisplay(adminDate))+'.</div>';
     document.getElementById('json-text').value='';
+    document.getElementById('import-preview').innerHTML='';
     setTimeout(function(){renderAdmin(document.getElementById('app'));},1400);
   }).catch(function(e){ hideOverlay(); alertEl.innerHTML='<div class="alert error">Error al guardar: '+esc(e.message)+'</div>'; });
 }

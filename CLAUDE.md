@@ -100,6 +100,28 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > rehabilita la carga y habilita **"Copiar fila para el Master Tracker"** (para que el propio AM la
 > pegue). El override es por tarjeta y por sesión (`overrideLate`).
 
+> **Borrar un ítem puntual (`adminDeleteItem`):** botón "Eliminar" en la tarjeta expandida,
+> visible solo para Research (`isResearch`). Borra ESE ítem nomás — a diferencia de "Limpiar
+> este día" (`clearDayProjects`, en la pestaña Cargar proyectos), que vacía el día completo. Usa
+> `p._d` (la fecha que le puso `dbGetAllProjects` al cargarlo) para saber en qué fila de Supabase
+> vive; si no tiene `_d` (viendo desde la pestaña Cargar proyectos, sin pasar por el histórico),
+> cae a `adminDate`. Después de borrar, `renderList()` refresca — pensado para usarse desde
+> "Proyectos cargados"/Consolidado, no cambia si se llama desde otro lado.
+
+> **Vista previa antes de importar (`previewImportJson`/`confirmImportJson`):** el botón de la
+> pestaña "Cargar proyectos" ya no importa directo — primero parsea y valida el JSON, y muestra
+> cada ítem con la misma tarjeta que va a ver el equipo (`previewItemHTML`, sin impacto por
+> cliente todavía) antes de guardar nada. Recién con "Confirmar e importar" se llama a `saveDay`.
+> `pendingImport` guarda el resultado parseado entre los dos pasos; `adminChangeDate` lo limpia
+> (evita confirmar contra el día equivocado si cambian la fecha a mitad de camino). Es el flujo
+> normal para cualquiera con acceso a Cargar proyectos (Research), no una vista de prueba aparte.
+
+> **`linkTextoLabel(p)`:** el campo `linkTexto` no siempre apunta a un documento — en
+> `resumen_sesion` es el video/registro de la sesión (lo carga `whatsapp-resumen-sesion`). Por
+> eso el link se rotula "Fuente oficial" para ese tipo y "Texto" para el resto, en vez de un
+> label fijo. Se usa en `cardHTML`, `projDetail` y `previewItemHTML` — si se agrega un cuarto
+> lugar que muestre ese link, usar esta función ahí también en vez de hardcodear "Texto".
+
 > **Nombre para mostrar (`CLIENT_LABEL`):** la clave interna de un cliente en `CLIENTS` es la que
 > queda guardada en Supabase en cada calificación (`localImp`/`SELS`). Si hace falta que se
 > **muestre** o **exporte** distinto de esa clave (ej. Cami pidió que "Clientes afectados" en el
