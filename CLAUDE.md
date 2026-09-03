@@ -161,14 +161,28 @@ Notas:
 
 ---
 
+## Cómo está organizada la carpeta `skill/` (leer antes de tocar cualquier skill)
+
+Cada skill tiene DOS cosas con el mismo nombre y distinta extensión — no son duplicados, son
+fuente vs. paquete:
+- **Carpeta `skill/<nombre>/` → `SKILL.md`**: el fuente, en texto plano, el que se edita.
+- **Archivo `skill/<nombre>.skill`**: el paquete (zip) que se sube en **Settings → Skills**. Es
+  el único de los dos que se puede importar — la carpeta no sirve para subir directamente.
+En Explorer se distinguen por el tipo: "Carpeta de archivos" (fuente) vs. "Archivo SKILL" (paquete).
+Después de editar el `SKILL.md`, hay que re-empaquetar el `.skill` — si no, el que se sube queda
+desactualizado. `snippet-to-json` es la excepción a la carpeta propia (ver abajo).
+
 ## La skill `snippet-to-json`
 
 - Convierte el Daily Legal Snippet (Word/.eml/texto) en el JSON que importa la app: proyectos de
   ley, normas del Boletín Oficial (tag `NORMA PUBLICADA (...)`) y, si se cargan ahí, resúmenes de
   sesión (tag `RESUMEN DE SESIÓN | ...`) — emite el campo `tipo` en cada objeto (ver "Tipos de
   ítem" más arriba).
-- Corre desde la cuenta de Claude (panel **Settings → Skills**). El fuente (`SKILL.md`) y el `.skill`
-  empaquetado están en la carpeta `skill/` de este repo.
+- Corre desde la cuenta de Claude (panel **Settings → Skills**). **Excepción a la convención de
+  arriba:** el fuente es `skill/SKILL.md` directo (no `skill/snippet-to-json/SKILL.md` — no tiene
+  carpeta propia), y el paquete es `skill/snippet-to-json.skill`. Además, por dentro el paquete
+  se llama `snippet-digital-json` (nombre viejo, no se renombró) — si el panel de Skills lo lista
+  como "snippet-digital-json" en vez de "snippet-to-json", es la misma skill, no hay dos.
 
 ## La skill `daily-legal-snippet` (redacción — la usa Research: Camila/Erika)
 
