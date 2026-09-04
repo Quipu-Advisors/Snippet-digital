@@ -320,14 +320,6 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   de import va siempre, esa vista no tiene estado colapsado). Colapsada se queda con el ícono
   nomás, sin sumarle texto a la vista mínima. `resumen_sesion` no tiene label acá (ya tiene su
   propio badge "Solo informativo" en la fila de metadata).
-- **`OWL_SVG` / `CONDOR_SVG` (pantalla de login):** los íconos de los grupos Research (lechuza) y
-  Public Affairs (cóndor) son SVG propios, no de Tabler — **Tabler Icons no tiene ningún ícono de
-  ave** (se buscó en el set completo: sin owl, condor, eagle, hawk ni bird). SVG inline con
-  `stroke="currentColor"` hereda el color igual que un ícono de fuente (no hace falta CSS aparte),
-  y no depende de ningún CDN — relevante justo por el bug de 3.31.0 de más arriba. Si hace falta
-  otro ícono que no exista en Tabler, mismo patrón: SVG chico, `viewBox="0 0 24 24"`,
-  `stroke="currentColor"`, sin relleno — y priorizar formas simples (una curva, no detalle fino),
-  se ve como blob a 13px si tiene mucho trazo.
 - **`.cresumen` usa `white-space:pre-wrap`** para que los `\n\n` que traiga el JSON se vean como
   párrafos separados (si no, un `<div>` los colapsa). Las skills `snippet-digital-json` y
   `whatsapp-resumen-sesion` tienen instrucción explícita de conservar los saltos de párrafo del
