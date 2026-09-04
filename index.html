@@ -1100,6 +1100,11 @@ async function renderConsolidado(container) {
   // sus calificaciones, no debe llegar al Master Tracker).
   var mergedAll = mergeImpacts(Object.keys(selPids), SELS);
   var sp=PROJECTS.filter(function(p){ var mi=mergedAll[String(p.id)]; return mi && CLIENTS.some(function(c){return mi[c]&&mi[c]!=='-';}); });
+  // Split para el Master Tracker: PL regionales (Chile/Uruguay/Paraguay, hoy a cargo de Eri)
+  // aparte de nacionales+provinciales (Argentina, hoy a cargo de Cami) — dos tablas, dos
+  // responsables, sin que ninguna dependa de la otra para poder cargar la suya.
+  var spRegional = sp.filter(function(p){ return PAISES_REGIONALES.indexOf(p.jur) >= 0; });
+  var spNacional = sp.filter(function(p){ return PAISES_REGIONALES.indexOf(p.jur) < 0; });
   var h='<div class="admin-body">';
   h+='<div class="m-date" style="justify-content:flex-end;margin-bottom:12px"><label for="cons-date">Día</label><input type="date" id="cons-date" value="'+viewDate+'" max="'+isoToday()+'" onchange="consolidadoChangeDate(this.value)"></div>';
   h+='<div class="admin-card">';
@@ -1109,13 +1114,18 @@ async function renderConsolidado(container) {
   if(!mns.length){h+='<div class="empty" style="padding:1.5rem"><i class="ti ti-clock" style="font-size:28px;display:block;margin:0 auto 10px"></i>Ningun manager ha enviado su seleccion para este día.</div>';}
   else{mns.forEach(function(m){h+=managerCard(m,SELS[m],PROJECTS);});}
   h+='</div>';
-  if(sp.length){
-    h+='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-copy"></i> Copiar a Sheets</div>';
-    h+='<div class="admin-card-sub">Impacto mas alto entre managers como definitivo.</div>';
-    h+='<div class="btn-row"><button class="btn primary" onclick="copyConsolidado()"><i class="ti ti-copy"></i> Copiar todo para Sheets</button>';
-    h+='<span id="copy-ok" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
-    h+='<div class="cprev">'+esc(buildRows(sp,SELS).split('\n').map(function(r){return r.split('\t').slice(0,6).join(' | ')+' | ...';}).join('\n'))+'</div></div>';
+  function copySheetsCard(titulo, sub, grupo, items) {
+    if(!items.length) return '';
+    var c='<div class="admin-card"><div class="admin-card-title"><i class="ti ti-copy"></i> '+titulo
+      +' <span style="background:var(--blue-bg);color:var(--blue-dark);font-size:12px;padding:2px 10px;border-radius:var(--radius);font-weight:500;margin-left:4px">'+items.length+'</span></div>';
+    c+='<div class="admin-card-sub">'+sub+'</div>';
+    c+='<div class="btn-row"><button class="btn primary" onclick="copyConsolidado(\''+grupo+'\')"><i class="ti ti-copy"></i> Copiar para Sheets</button>';
+    c+='<span id="copy-ok-'+grupo+'" style="font-size:12px;color:var(--green);display:none"><i class="ti ti-check"></i> Copiado!</span></div>';
+    c+='<div class="cprev">'+esc(buildRows(items,SELS).split('\n').map(function(r){return r.split('\t').slice(0,6).join(' | ')+' | ...';}).join('\n'))+'</div></div>';
+    return c;
   }
+  h+=copySheetsCard('Copiar a Sheets — Nacional y provincial', 'Argentina (Nacional + provincias). Impacto más alto entre managers como definitivo.', 'nacional', spNacional);
+  h+=copySheetsCard('Copiar a Sheets — Regional', 'Chile, Uruguay, Paraguay. Impacto más alto entre managers como definitivo.', 'regional', spRegional);
   h+='</div>'; container.innerHTML=h;
 }
 
@@ -1243,11 +1253,16 @@ function buildRows(projects,sels) {
   }).join('\n');
 }
 
-function copyConsolidado() {
+// grupo: 'nacional' o 'regional'. Recalcula el mismo split que la vista previa (misma regla de
+// impacto efectivo != '-') para que lo que se copia sea exactamente lo que se mostró arriba.
+function copyConsolidado(grupo) {
   var selPids={}; Object.values(SELS).forEach(function(sel){Object.keys(sel).forEach(function(pid){selPids[String(pid)]=true;});});
-  var sp=PROJECTS.filter(function(p){return selPids[String(p.id)];}); if(!sp.length)return;
+  var mergedAll = mergeImpacts(Object.keys(selPids), SELS);
+  var sp=PROJECTS.filter(function(p){ var mi=mergedAll[String(p.id)]; return mi && CLIENTS.some(function(c){return mi[c]&&mi[c]!=='-';}); });
+  sp = sp.filter(function(p){ var esRegional = PAISES_REGIONALES.indexOf(p.jur) >= 0; return grupo==='regional' ? esRegional : !esRegional; });
+  if(!sp.length) return;
   var rows=buildRows(sp,SELS);
-  var showOk=function(){var ok=document.getElementById('copy-ok');if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2200);}};
+  var showOk=function(){var ok=document.getElementById('copy-ok-'+grupo);if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2200);}};
   try{navigator.clipboard.writeText(rows).then(showOk).catch(function(){fallbackCopy(rows,showOk);});}catch(e){fallbackCopy(rows,showOk);}
 }
 

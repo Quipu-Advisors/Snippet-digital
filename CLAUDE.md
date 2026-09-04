@@ -132,6 +132,19 @@ Todo esto está al principio del `<script>` en `index.html`, en constantes con n
 > "Clientes afectados" de `buildRows`). Las claves de `SHEET_IMPACT_COLS` no se tocan por esto:
 > esas son el orden de columnas fijas del Master Tracker, no texto libre.
 
+> **Consolidado dividido en dos tablas (nacional/provincial vs. regional):** desde 2026-09,
+> Erika carga los PL de Chile/Uruguay/Paraguay al Master Tracker y Camila los de Argentina —
+> antes era una sola tabla combinada y una sola persona. `renderConsolidado` arma `spNacional`
+> y `spRegional` (split por `PAISES_REGIONALES.indexOf(p.jur)`) y renderiza dos `admin-card`
+> independientes vía `copySheetsCard(...)`, cada una con su propio botón, preview y contador —
+> si un grupo queda vacío, esa card no se muestra. `copyConsolidado(grupo)` recibe `'nacional'`
+> o `'regional'` y **recalcula el split desde cero** (no depende de la vista ya renderizada), con
+> la MISMA regla de impacto efectivo (`!= '-'`) que usa la vista previa — antes la función de
+> copiar usaba un filtro más laxo que la preview (cualquier pid con alguna selección, sin chequear
+> que el impacto mergeado fuera efectivo), así que lo copiado podía no coincidir exactamente con
+> lo previsualizado; quedó unificado. Si se suma un cuarto país regional, alcanza con agregarlo a
+> `PAISES_REGIONALES` — el resto de la lógica ya lo toma solo.
+
 > **Export a Sheets:** `buildRows` arma las filas tabuladas alineadas a las 34+ columnas del
 > **Master Tracker 2.0** (hoja `Sheet1`). Las columnas de impacto (desde la 19) usan su propio
 > orden y nombres de la planilla (Microsoft, Amazon, Tiktok, Worldcoin, Didi…), mapeados a los
