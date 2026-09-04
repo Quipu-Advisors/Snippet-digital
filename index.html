@@ -452,7 +452,9 @@ function ambitoOf(p) {
   return 'Proyectos de ley';
 }
 // resumen_sesion es solo informativo: nunca lleva calificación de impacto por cliente.
-function llevaImpacto(p) { return canonTipo(p && p.tipo) !== 'resumen_sesion'; }
+// Corrección 2026-09-04: norma también es puramente informativa, igual que resumen_sesion — solo
+// proyecto_ley se rotula. Antes norma sí llevaba calificación; se cambió a pedido de Lucas.
+function llevaImpacto(p) { return canonTipo(p && p.tipo) === 'proyecto_ley'; }
 
 // Limpia/normaliza una lista de proyectos al cargarla.
 function normalizeProjects(list) {
@@ -695,16 +697,25 @@ function doGate() {
   else { al.innerHTML = '<div class="alert error">Contraseña incorrecta.</div>'; }
 }
 
+// Lechucita para Research — Tabler Icons no tiene ningún ícono de lechuza/búho (se buscó en el
+// set completo). SVG propio en vez de un ícono de librería: no depende de ningún CDN externo
+// (justo hoy encontramos que uno llevaba roto quién sabe cuánto tiempo, sin dar ningún error) y
+// hereda el color por currentColor, igual que si fuera un ícono más de la fuente.
+var OWL_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M9.5 5c-.6-1-1.4-1.6-2.3-2M14.5 5c.6-1 1.4-1.6 2.3-2"/><path d="M7 6.5C5.2 7.7 4 9.9 4 12.5 4 17.2 7.6 21 12 21s8-3.8 8-8.5c0-2.6-1.2-4.8-3-6"/><circle cx="9" cy="12.5" r="1.5"/><circle cx="15" cy="12.5" r="1.5"/><path d="M12 14l-1 1.6h2z"/></svg>';
+// Cóndor para Public Affairs — tampoco existe en Tabler Icons. Silueta simple de ave planeando
+// (alas extendidas), mismo criterio que la lechucita: SVG propio, sin depender de un CDN.
+var CONDOR_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M2 14q5-8 10-3q5-5 10 3"/></svg>';
+
 function renderLogin() {
   var groups = [
-    {title: 'Research', cls: 'lg-research', icon: 'ti-flask', names: RESEARCH},
-    {title: 'Public Affairs', cls: 'lg-pa', icon: 'ti-speakerphone', names: PUBLIC_AFFAIRS}
+    {title: 'Research', cls: 'lg-research', iconHTML: OWL_SVG, names: RESEARCH},
+    {title: 'Public Affairs', cls: 'lg-pa', iconHTML: CONDOR_SVG, names: PUBLIC_AFFAIRS}
   ];
   var h = '<div class="login-wrap"><div class="login-card wide">';
   h += '<div class="login-title">Bienvenida/o al Smart Snippet</div><div class="login-sub">Seleccioná tu nombre para continuar</div>';
   h += '<div class="lg-groups">';
   groups.forEach(function(g) {
-    h += '<div class="lg-group ' + g.cls + '"><div class="lg-group-title"><i class="ti ' + g.icon + '"></i> ' + g.title + '</div>';
+    h += '<div class="lg-group ' + g.cls + '"><div class="lg-group-title">' + (g.iconHTML || ('<i class="ti '+g.icon+'"></i>')) + ' ' + g.title + '</div>';
     h += '<div class="lg-names">';
     g.names.forEach(function(m) {
       h += '<div class="login-opt" onclick="login(\'' + m.replace(/'/g,"\\'") + '\')"><i class="ti ti-user"></i><strong>' + esc(managerLabel(m)) + '</strong></div>';

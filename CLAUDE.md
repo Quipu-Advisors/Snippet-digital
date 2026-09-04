@@ -302,9 +302,13 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   silenciosamente (mismo patrón que el fix de las jurisdicciones regionales).
 - **`giro`/`autor` solo aplican a `proyecto_ley`** — van `""` para los otros dos tipos.
   `isOverdue`/el ciclo de vencimiento (cortes Mar/Vie) tampoco aplica fuera de `proyecto_ley`.
-- **`resumen_sesion` no lleva calificación de impacto por cliente** (tarjeta "Solo informativo",
-  sin dropdown) y no entra al export del Master Tracker. `norma` sí lleva calificación, igual que
-  un proyecto. Cuando `!llevaImpacto(p)`, `cardHTML` **no reserva la columna `.cimpact.wide`**
+- **`resumen_sesion` y `norma` no llevan calificación de impacto por cliente** (tarjeta "Solo
+  informativo", sin dropdown) y no entran al export del Master Tracker — `llevaImpacto(p)` es
+  `true` únicamente para `proyecto_ley`. **Cambió el 2026-09-04**: `norma` sí llevaba calificación
+  hasta ese día (se corrigió a pedido de Lucas — el Boletín Oficial es puramente informativo, como
+  los resúmenes de sesión). Si se vuelve a tocar esto, es un cambio de un solo lugar
+  (`llevaImpacto`), todo lo demás (badge, ancho de tarjeta, export) ya está condicionado a esa
+  función. Cuando `!llevaImpacto(p)`, `cardHTML` **no reserva la columna `.cimpact.wide`**
   (no hay nada que poner ahí) — el badge "Solo informativo" va como pill en la fila de metadata y
   el resumen ocupa el ancho completo de la tarjeta. Si se le suma contenido real a esa columna
   para algún tipo sin impacto en el futuro, revisar este atajo.
@@ -316,6 +320,14 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   de import va siempre, esa vista no tiene estado colapsado). Colapsada se queda con el ícono
   nomás, sin sumarle texto a la vista mínima. `resumen_sesion` no tiene label acá (ya tiene su
   propio badge "Solo informativo" en la fila de metadata).
+- **`OWL_SVG` / `CONDOR_SVG` (pantalla de login):** los íconos de los grupos Research (lechuza) y
+  Public Affairs (cóndor) son SVG propios, no de Tabler — **Tabler Icons no tiene ningún ícono de
+  ave** (se buscó en el set completo: sin owl, condor, eagle, hawk ni bird). SVG inline con
+  `stroke="currentColor"` hereda el color igual que un ícono de fuente (no hace falta CSS aparte),
+  y no depende de ningún CDN — relevante justo por el bug de 3.31.0 de más arriba. Si hace falta
+  otro ícono que no exista en Tabler, mismo patrón: SVG chico, `viewBox="0 0 24 24"`,
+  `stroke="currentColor"`, sin relleno — y priorizar formas simples (una curva, no detalle fino),
+  se ve como blob a 13px si tiene mucho trazo.
 - **`.cresumen` usa `white-space:pre-wrap`** para que los `\n\n` que traiga el JSON se vean como
   párrafos separados (si no, un `<div>` los colapsa). Las skills `snippet-digital-json` y
   `whatsapp-resumen-sesion` tienen instrucción explícita de conservar los saltos de párrafo del
