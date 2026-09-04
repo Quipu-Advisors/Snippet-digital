@@ -26,6 +26,14 @@ Cualquier cambio de UI debería respetar esto.
 ## Arquitectura (simple a propósito)
 
 - **Un solo archivo:** `index.html` (HTML + CSS + JS, sin build, sin frameworks).
+- **Íconos:** Tabler Icons vía CDN (`<link>` en el `<head>`), clase `ti ti-<nombre>`. **Ojo con la
+  versión:** hasta 2026-09-04 el link apuntaba a `tabler-icons/3.31.0/iconfont/tabler-icons.min.css`
+  — esa ruta **nunca existió** en cdnjs (404 silencioso, sin error visible), así que NINGÚN ícono
+  se renderizó nunca, en ningún lado de la app, probablemente desde el origen del proyecto. Se
+  corrigió a `tabler-icons/3.46.0/tabler-icons.min.css` (sin el segmento `/iconfont/`, cambió en
+  versiones nuevas). Antes de fijar una versión nueva del CDN, verificar que la URL responda 200
+  (`curl -sI <url>`) — un 404 de un `<link>` no rompe nada visible ni tira error de consola, así
+  que pasa desapercibido fácil.
 - **Datos:** Supabase (PostgreSQL en la nube). Proyecto ref `xyqmtqsczscdejcwusce`.
 - **Hosting:** Vercel (`snippet-digital.vercel.app`), conectado al repo `Quipu-Advisors/Snippet-digital`
   — cada push a `main` redeploya solo. Migrado desde GitHub Pages.
