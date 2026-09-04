@@ -561,11 +561,10 @@ function copyMtRow(pid) {
 // de la sesión (lo carga la skill whatsapp-resumen-sesion), no un documento.
 function linkTextoLabel(p) { return (p && p.tipo === 'resumen_sesion') ? 'Fuente oficial' : 'Texto'; }
 // Ícono chico junto al título para distinguir el tipo de un vistazo, sin abrir la tarjeta.
-// proyecto_ley es el caso default/mayoritario y no lleva ícono (menos ruido visual).
 function tipoIconHTML(p) {
   if (p && p.tipo === 'resumen_sesion') return '<i class="ti ti-messages tipo-ico" title="Resumen de sesión — solo informativo"></i>';
   if (p && p.tipo === 'norma') return '<i class="ti ti-gavel tipo-ico" title="Norma del Boletín Oficial"></i>';
-  return '';
+  return '<i class="ti ti-file-text tipo-ico" title="Proyecto de ley"></i>';
 }
 
 function mapOrg(org) {
