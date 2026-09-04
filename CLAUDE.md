@@ -282,6 +282,10 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   (no hay nada que poner ahí) — el badge "Solo informativo" va como pill en la fila de metadata y
   el resumen ocupa el ancho completo de la tarjeta. Si se le suma contenido real a esa columna
   para algún tipo sin impacto en el futuro, revisar este atajo.
+- **`tipoIconHTML(p)`:** ícono chico antepuesto al título (`.ctitle`, en `cardHTML` y en la vista
+  previa de import) para distinguir el tipo sin abrir la tarjeta — `ti-messages` para
+  `resumen_sesion`, `ti-gavel` para `norma`. `proyecto_ley` (el caso default/mayoritario) no
+  lleva ícono, a propósito, para no sumar ruido visual al caso más común.
 - **`.cresumen` usa `white-space:pre-wrap`** para que los `\n\n` que traiga el JSON se vean como
   párrafos separados (si no, un `<div>` los colapsa). Las skills `snippet-digital-json` y
   `whatsapp-resumen-sesion` tienen instrucción explícita de conservar los saltos de párrafo del

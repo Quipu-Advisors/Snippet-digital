@@ -130,6 +130,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .card.sel .chk{background:var(--blue);border-color:var(--blue)}
 .cinfo{flex:1;min-width:0}
 .ctitle{font-size:16px;font-weight:600;line-height:1.4}
+.tipo-ico{font-size:14px;color:var(--accent);margin-right:5px;vertical-align:-1px}
 .card.sel .ctitle{margin-bottom:8px}
 .cmeta-min{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}
 .others-mark{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--accent)}
@@ -559,6 +560,13 @@ function copyMtRow(pid) {
 // Etiqueta del link linkTexto: no siempre es "texto" — en resumen_sesion es el video/registro
 // de la sesión (lo carga la skill whatsapp-resumen-sesion), no un documento.
 function linkTextoLabel(p) { return (p && p.tipo === 'resumen_sesion') ? 'Fuente oficial' : 'Texto'; }
+// Ícono chico junto al título para distinguir el tipo de un vistazo, sin abrir la tarjeta.
+// proyecto_ley es el caso default/mayoritario y no lleva ícono (menos ruido visual).
+function tipoIconHTML(p) {
+  if (p && p.tipo === 'resumen_sesion') return '<i class="ti ti-messages tipo-ico" title="Resumen de sesión — solo informativo"></i>';
+  if (p && p.tipo === 'norma') return '<i class="ti ti-gavel tipo-ico" title="Norma del Boletín Oficial"></i>';
+  return '';
+}
 
 function mapOrg(org) {
   var l = (org||'').toLowerCase();
@@ -874,7 +882,7 @@ function cardHTML(p) {
 
   // MITAD IZQUIERDA: info del proyecto
   h += '<div class="cinfo">';
-  h += '<div class="ctitle">'+esc(p.title)+'</div>';
+  h += '<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+'</div>';
   if (isExp) {
     // EXPANDIDA: todo el detalle
     h += '<div class="cmeta">';
@@ -1562,7 +1570,7 @@ function previewItemHTML(p) {
   var tema=temaOf(p), lx=safeUrl(p.linkExpediente), lt=safeUrl(p.linkTexto);
   var tipoLbl = p.tipo==='norma' ? 'Norma' : p.tipo==='resumen_sesion' ? 'Resumen de sesión' : 'Proyecto de ley';
   var h='<div class="card" style="cursor:default"><div class="cinfo">';
-  h+='<div class="ctitle">'+esc(p.title)+'</div><div class="cmeta">';
+  h+='<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+'</div><div class="cmeta">';
   h+='<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
   h+='<span class="pill p-num">'+esc(p.num)+'</span>';
   h+='<span class="pill">'+esc(tipoLbl)+'</span>';
