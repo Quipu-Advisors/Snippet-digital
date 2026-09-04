@@ -131,6 +131,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .cinfo{flex:1;min-width:0}
 .ctitle{font-size:16px;font-weight:600;line-height:1.4}
 .tipo-ico{font-size:14px;color:var(--accent);margin-right:5px;vertical-align:-1px}
+.tipo-label{color:var(--accent);font-weight:400;font-size:13px}
 .card.sel .ctitle{margin-bottom:8px}
 .cmeta-min{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}
 .others-mark{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--accent)}
@@ -571,6 +572,14 @@ function tipoIconHTML(p) {
   if (p && p.tipo === 'norma') return '<i class="ti ti-gavel tipo-ico" title="Norma del Boletín Oficial"></i>';
   return '<i class="ti ti-file-text tipo-ico" title="Proyecto de ley"></i>';
 }
+// Etiqueta en texto junto al ícono, solo cuando la tarjeta está expandida (colapsada se queda
+// con el ícono nomás — así no le suma texto a la vista mínima).
+function tipoLabelHTML(p) {
+  var t = canonTipo(p && p.tipo);
+  if (t === 'norma') return ' <span class="tipo-label">(norma en vigor)</span>';
+  if (t === 'proyecto_ley') return ' <span class="tipo-label">(proyecto de ley)</span>';
+  return '';
+}
 
 function mapOrg(org) {
   var l = (org||'').toLowerCase();
@@ -895,7 +904,7 @@ function cardHTML(p) {
 
   // MITAD IZQUIERDA: info del proyecto
   h += '<div class="cinfo">';
-  h += '<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+'</div>';
+  h += '<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+(isExp?tipoLabelHTML(p):'')+'</div>';
   if (isExp) {
     // EXPANDIDA: todo el detalle
     h += '<div class="cmeta">';
@@ -1598,7 +1607,7 @@ function previewItemHTML(p) {
   var tema=temaOf(p), lx=safeUrl(p.linkExpediente), lt=safeUrl(p.linkTexto);
   var tipoLbl = p.tipo==='norma' ? 'Norma' : p.tipo==='resumen_sesion' ? 'Resumen de sesión' : 'Proyecto de ley';
   var h='<div class="card" style="cursor:default"><div class="cinfo">';
-  h+='<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+'</div><div class="cmeta">';
+  h+='<div class="ctitle">'+tipoIconHTML(p)+esc(p.title)+tipoLabelHTML(p)+'</div><div class="cmeta">';
   h+='<span class="pill p-fecha"><i class="ti ti-calendar" style="font-size:10px"></i> '+esc(p.fecha)+'</span>';
   h+='<span class="pill p-num">'+esc(p.num)+'</span>';
   h+='<span class="pill">'+esc(tipoLbl)+'</span>';
