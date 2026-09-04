@@ -293,8 +293,13 @@ organización, no la inventa — ver "La skill `snippet-digital-json`" más abaj
   publicación en B.O. de una ley, etc.) / `norma` (decreto, resolución o disposición del Boletín
   Oficial — nunca pasó por el Congreso) / `resumen_sesion` (resumen narrativo largo de una sesión
   o reunión de comisión, típicamente de una alerta de WhatsApp).
-- **Ámbito** (derivado de `tipo`, filtro nuevo en el toolbar): Legislativa (`proyecto_ley` +
-  `resumen_sesion`) / Regulatoria (`norma`).
+- **Ámbito** (`ambitoOf(p)`, filtro en el toolbar, uno a uno con `tipo`): "Proyectos de ley"
+  (`proyecto_ley`) / "Alertas de sesión" (`resumen_sesion`) / "Boletines oficiales" (`norma`).
+  **Cambió el 2026-09-04** — antes eran dos categorías agrupadas (Legislativa/Regulatoria); ahora
+  son tres, una por tipo. Si se vuelve a tocar esto: una preferencia de filtro guardada en el
+  formato viejo no matchea ninguno de los valores nuevos — `applyFilterPrefs` lo detecta (ningún
+  valor guardado aparece entre los checkboxes actuales) y lo ignora en vez de destildar todo
+  silenciosamente (mismo patrón que el fix de las jurisdicciones regionales).
 - **`giro`/`autor` solo aplican a `proyecto_ley`** — van `""` para los otros dos tipos.
   `isOverdue`/el ciclo de vencimiento (cortes Mar/Vie) tampoco aplica fuera de `proyecto_ley`.
 - **`resumen_sesion` no lleva calificación de impacto por cliente** (tarjeta "Solo informativo",

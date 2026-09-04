@@ -444,7 +444,12 @@ function canonSector(s) { var n = norm(s); for (var i=0;i<SECTORES.length;i++) i
 function canonJur(j) { var n = norm(j); for (var i=0;i<JUR_ORDER.length;i++) if (norm(JUR_ORDER[i])===n) return JUR_ORDER[i]; return j ? JUR_OTRA : JUR_OTRA; }
 // Sin `tipo` (datos viejos, previos a este campo) = proyecto_ley, para no romper nada ya cargado.
 function canonTipo(t) { return (t === 'norma' || t === 'resumen_sesion') ? t : 'proyecto_ley'; }
-function ambitoOf(p) { return (p && p.tipo === 'norma') ? 'Regulatoria' : 'Legislativa'; }
+function ambitoOf(p) {
+  var t = canonTipo(p && p.tipo);
+  if (t === 'norma') return 'Boletines oficiales';
+  if (t === 'resumen_sesion') return 'Alertas de sesión';
+  return 'Proyectos de ley';
+}
 // resumen_sesion es solo informativo: nunca lleva calificación de impacto por cliente.
 function llevaImpacto(p) { return canonTipo(p && p.tipo) !== 'resumen_sesion'; }
 
@@ -758,8 +763,9 @@ async function renderManager(container) {
   h += '<hr class="dd-divider"><div class="dd-item" onclick="toggleJur(\'' + JUR_OTRA + '\',event)"><input type="checkbox" class="jur-chk" value="' + JUR_OTRA + '" checked> Sin clasificar</div></div></div>';
   h += '<label>Ámbito</label><div class="dd-wrap"><button class="dd-btn" id="dd-amb-btn" onclick="toggleMenu(\'amb\',event)">Todos</button>';
   h += '<div class="dd-menu" id="dd-amb-menu"><div class="dd-item" onclick="toggleAllAmb(event)"><input type="checkbox" id="chk-all-amb" checked> Todos</div><hr class="dd-divider">';
-  h += '<div class="dd-item" onclick="toggleAmb(\'Legislativa\',event)"><input type="checkbox" class="amb-chk" value="Legislativa" checked> Legislativa</div>';
-  h += '<div class="dd-item" onclick="toggleAmb(\'Regulatoria\',event)"><input type="checkbox" class="amb-chk" value="Regulatoria" checked> Regulatoria</div></div></div>';
+  h += '<div class="dd-item" onclick="toggleAmb(\'Proyectos de ley\',event)"><input type="checkbox" class="amb-chk" value="Proyectos de ley" checked> Proyectos de ley</div>';
+  h += '<div class="dd-item" onclick="toggleAmb(\'Alertas de sesión\',event)"><input type="checkbox" class="amb-chk" value="Alertas de sesión" checked> Alertas de sesión</div>';
+  h += '<div class="dd-item" onclick="toggleAmb(\'Boletines oficiales\',event)"><input type="checkbox" class="amb-chk" value="Boletines oficiales" checked> Boletines oficiales</div></div></div>';
   h += '<span class="tb-countdown" id="countdown"></span>';
   h += '<label class="tb-toggle"><input type="checkbox" id="only-today" onchange="setOnlyToday(this.checked)"><span class="tb-switch"></span><span>Solo reportados hoy</span></label>';
   h += '</div>';
@@ -795,7 +801,15 @@ function applyFilterPrefs() {
   // ANTES de que existieran no puede haber marcado ni desmarcado a proposito: los dejamos en
   // su default (tildado), no los ocultamos silenciosamente por no estar en el array guardado.
   if (Array.isArray(p.jurs)) document.querySelectorAll('.jur-chk').forEach(function(c){ if (PAISES_REGIONALES.indexOf(c.value) < 0) c.checked = p.jurs.indexOf(c.value) >= 0; });
-  if (Array.isArray(p.ambitos)) document.querySelectorAll('.amb-chk').forEach(function(c){ c.checked = p.ambitos.indexOf(c.value) >= 0; });
+  // Los valores de Ámbito cambiaron (2026-09-04: Legislativa/Regulatoria -> Proyectos de ley/
+  // Alertas de sesión/Boletines oficiales). Una preferencia vieja no matchea NINGUNO de los
+  // valores nuevos — si la aplicáramos tal cual, todo quedaría destildado. Igual que con las
+  // jurisdicciones regionales: si no matchea nada, la ignoramos y dejamos el default (tildado).
+  if (Array.isArray(p.ambitos)) {
+    var validAmb = Array.from(document.querySelectorAll('.amb-chk')).map(function(c){ return c.value; });
+    var ambStale = p.ambitos.length && !p.ambitos.some(function(v){ return validAmb.indexOf(v) >= 0; });
+    if (!ambStale) document.querySelectorAll('.amb-chk').forEach(function(c){ c.checked = p.ambitos.indexOf(c.value) >= 0; });
+  }
   onlyToday = !!p.today;
   var ot = document.getElementById('only-today'); if (ot) ot.checked = onlyToday;
   updateSecBtn(); updateJurBtn(); updateAmbBtn();
